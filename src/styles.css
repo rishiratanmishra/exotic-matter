@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+@theme {
+  --color-brand-primary: #007acc;
+  --color-bg-main: #1e1e1e;
+  --color-bg-sidebar: #252526;
+  --color-bg-activity: #333333;
+  --color-border: #333333;
+  --font-outfit: "Outfit", system-ui, sans-serif;
+}
+
+:root {
+  font-family: "Outfit", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  
+  /* Default: Dark Theme */
+  --bg-main: #0d0d0f;
+  --bg-side: #111113;
+  --bg-explorer: #141416;
+  --bg-tab-active: #0d0d0f;
+  --bg-tab-inactive: #111113;
+  --border-main: #1d1d20;
+  --text-main: #d4d4d4;
+  --text-muted: #4e4e54;
+}
+
+body.theme-dark {
+  --bg-main: #0d0d0f;
+  --bg-side: #111113;
+  --bg-explorer: #141416;
+  --bg-tab-active: #0d0d0f;
+  --bg-tab-inactive: #111113;
+  --border-main: #1d1d20;
+  --text-main: #d4d4d4;
+  --text-muted: #4e4e54;
+}
+
+body.theme-light {
+  --bg-main: #ffffff;
+  --bg-side: #f3f3f3;
+  --bg-explorer: #f8f8f8;
+  --bg-tab-active: #ffffff;
+  --bg-tab-inactive: #ececec;
+  --border-main: #e5e5e5;
+  --text-main: #333333;
+  --text-muted: #999999;
+}
+
+body.theme-monokai {
+  --bg-main: #272822;
+  --bg-side: #1e1f1c;
+  --bg-explorer: #272822;
+  --bg-tab-active: #272822;
+  --bg-tab-inactive: #1e1f1c;
+  --border-main: #3e3d32;
+  --text-main: #f8f8f2;
+  --text-muted: #75715e;
+}
+
+body {
+  margin: 0;
+  overflow: hidden;
+  user-select: none;
+  background-color: var(--bg-main);
+  color: var(--text-main);
+  transition: background-color 0.2s, color 0.2s;
+}
+
+/* Custom Scrollbar - Thin & Small */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #6b6b7440;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background-clip: content-box;
+  transition: background 0.2s;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #6b6b7480;
+  background-clip: content-box;
+}
