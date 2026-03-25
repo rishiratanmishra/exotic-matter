@@ -116,7 +116,7 @@ export default function FileExplorer({ workspacePath, onFileSelect }: FileExplor
     } else {
       result = await window.capsicode.createDirectory(newPath)
     }
-    
+
     if (result.success) {
       setRefreshKey(k => k + 1)
       if (type === 'file') onFileSelect?.(newPath)

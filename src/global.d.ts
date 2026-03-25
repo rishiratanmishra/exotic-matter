@@ -51,5 +51,9 @@ interface Window {
     listExtensions: () => Promise<any[]>
     getExtensionFile: (id: string, fileName: string) => Promise<string | null>
     uninstallExtension: (id: string) => Promise<{ success: boolean }>
+    searchMarketplace: (query: string) => Promise<any>
+    installExtension: (id: string, version: string) => Promise<{ success: boolean, error?: string }>
+    getExtensionDetails: (id: string) => Promise<any>
+    getExternalImage: (url: string) => Promise<string | null>
   }
 }

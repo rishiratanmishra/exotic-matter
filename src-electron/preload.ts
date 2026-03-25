@@ -51,6 +51,10 @@ contextBridge.exposeInMainWorld('capsicode', {
   listExtensions: () => ipcRenderer.invoke('list-extensions'),
   getExtensionFile: (id: string, fileName: string) => ipcRenderer.invoke('get-extension-file', { id, fileName }),
   uninstallExtension: (id: string) => ipcRenderer.invoke('uninstall-extension', id),
+  searchMarketplace: (query: string) => ipcRenderer.invoke('search-marketplace', query),
+  installExtension: (id: string, version: string) => ipcRenderer.invoke('install-extension', { id, version }),
+  getExtensionDetails: (id: string) => ipcRenderer.invoke('get-extension-details', id),
+  getExternalImage: (url: string) => ipcRenderer.invoke('get-external-image', url),
 
   // AI (routed through main for security)
   getModels: () => ipcRenderer.invoke('get-models'),

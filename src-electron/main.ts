@@ -1,6 +1,7 @@
 import { app, BrowserWindow, ipcMain, dialog, session } from 'electron'
-import { join, resolve, normalize } from 'path'
+import path, { join, resolve, normalize } from 'path'
 import { readdir, readFile, stat, writeFile, mkdir, unlink, rmdir, rename } from 'fs/promises'
+import * as fs from 'fs'
 import { execFile } from 'child_process'
 import { promisify } from 'util'
 import * as pty from 'node-pty'
@@ -59,8 +60,8 @@ function createWindow() {
       "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
       "font-src 'self' https://fonts.gstatic.com data:",
       // Allow ws: in dev for Vite HMR
-      `connect-src 'self' http://127.0.0.1:11434 ${isDev ? "ws: localhost:*" : ""}`,
-      "img-src 'self' data:;",
+      `connect-src 'self' http://127.0.0.1:11434 https://open-vsx.org https://openvsx.eclipsecontent.org ${isDev ? "ws: localhost:*" : ""}`,
+      "img-src * data: blob: 'self'",
     ].join('; ')
 
     callback({
@@ -164,6 +165,89 @@ ipcMain.handle('get-extension-file', async (_event, { id, fileName }: { id: stri
 ipcMain.handle('uninstall-extension', async (_event, id: number | string) => {
     // Logic to delete the folder
     return { success: true }
+})
+
+ipcMain.handle('search-marketplace', async (_event, query: string) => {
+  try {
+    const response = await fetch(`https://open-vsx.org/api/-/search?q=${encodeURIComponent(query)}&size=30`)
+    return await response.json()
+  } catch (err) {
+    console.error('[search-marketplace]', err)
+    return { extensions: [] }
+  }
+})
+
+ipcMain.handle('install-extension', async (_event, { id, version }: { id: string; version: string }) => {
+  const [ns, name] = id.split('.')
+  const downloadUrl = `https://open-vsx.org/api/${ns}/${name}/${version}/file/${ns}.${name}-${version}.vsix`
+  const targetDir = path.join(EXTENSIONS_DIR, id)
+  const AdmZip = require('adm-zip')
+  const axios = require('axios')
+
+  try {
+    const res = await axios.get(downloadUrl, { responseType: 'arraybuffer' })
+    const zip = new AdmZip(Buffer.from(res.data))
+    
+    if (!fs.existsSync(targetDir)) fs.mkdirSync(targetDir, { recursive: true })
+    
+    // Extract into folder, but usually VSIX has its contents inside 'extension/' folder
+    zip.extractAllTo(targetDir, true)
+    
+    // Check if everything is inside an 'extension' subfolder
+    const subfolder = path.join(targetDir, 'extension')
+    if (fs.existsSync(subfolder)) {
+        // Move contents out of extension subfolder to targetDir
+        const files = fs.readdirSync(subfolder)
+        for (const file of files) {
+            fs.renameSync(path.join(subfolder, file), path.join(targetDir, file))
+        }
+        fs.rmdirSync(subfolder)
+    }
+
+    return { success: true }
+  } catch (err: any) {
+    console.error('[install-extension] error:', err)
+    return { success: false, error: err.message }
+  }
+})
+
+ipcMain.handle('get-extension-details', async (_event, id: string) => {
+  try {
+    const [ns, name] = id.split('.')
+    const metaRes = await fetch(`https://open-vsx.org/api/${ns}/${name}/latest`)
+    const meta = await metaRes.json()
+    
+    let readme = ''
+    try {
+        const readmeRes = await fetch(`https://open-vsx.org/api/${ns}/${name}/${meta.version}/file/README.md`)
+        if (readmeRes.ok) readme = await readmeRes.text()
+    } catch (e) { /* ignore readme missing */ }
+
+    return { meta, readme }
+  } catch (err) {
+    console.error('[get-extension-details]', err)
+    return null
+  }
+})
+
+ipcMain.handle('get-external-image', async (_event, url: string) => {
+  try {
+    const axios = require('axios')
+    const response = await axios.get(url, { 
+      responseType: 'arraybuffer',
+      timeout: 5000,
+      headers: { 'User-Agent': 'CapsiCode IDE' }
+    })
+    const base64 = Buffer.from(response.data, 'binary').toString('base64')
+    const contentType = response.headers['content-type'] || 'image/png'
+    return `data:${contentType};base64,${base64}`
+  } catch (err: any) {
+    // If it's a 404, just return null quietly
+    if (err.response?.status !== 404) {
+      console.error(`[get-external-image] ${url}: ${err.message}`)
+    }
+    return null
+  }
 })
 
 // ─── IPC: App ─────────────────────────────────────────────────────────────────

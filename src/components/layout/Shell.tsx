@@ -20,6 +20,7 @@ import Chat from '../Chat'
 import InlineAIWidget from '@/components/InlineAIWidget'
 import KeyboardShortcuts from '../KeyboardShortcuts'
 import ExtensionsSidebar from '../sidebar/ExtensionsSidebar'
+import ExtensionDetails from '../ExtensionDetails'
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 
@@ -529,11 +530,13 @@ export default function Shell() {
                       ? <Keyboard size={11} className="text-blue-400 flex-shrink-0" />
                       : isDiff
                         ? <GitBranch size={11} className="text-amber-400 flex-shrink-0" />
-                        : <FileCode size={11} className={activeFile === path ? 'text-blue-400 flex-shrink-0' : 'text-[var(--text-muted)] flex-shrink-0'} />
+                        : path.startsWith('extension:')
+                          ? <Layers size={11} className="text-blue-400 flex-shrink-0" />
+                          : <FileCode size={11} className={activeFile === path ? 'text-blue-400 flex-shrink-0' : 'text-[var(--text-muted)] flex-shrink-0'} />
                     }
-                    <span className={cn('text-[12px] truncate max-w-[130px]', isDiff && 'italic text-amber-400/70')}>
+                    <span className={cn('text-[12px] truncate max-w-[130px]', isDiff && 'italic text-amber-400/70', path.startsWith('extension:') && 'font-bold')}>
                       {isDirty && <span className="text-amber-400 mr-1">●</span>}
-                      {isDiff ? `diff: ${fileName}` : fileName}
+                      {isDiff ? `diff: ${fileName}` : (path.startsWith('extension:') ? `Extension: ${path.split(':').pop()}` : fileName)}
                     </span>
                     <button
                       onClick={e => { e.stopPropagation(); closeFile(path) }}
@@ -555,6 +558,8 @@ export default function Shell() {
                 <KeyboardShortcuts />
               ) : activeFile?.startsWith('diff:') ? (
                 <DiffEditor path={activeFile.replace('diff:', '')} workspacePath={workspacePath} />
+              ) : activeFile?.startsWith('extension:') ? (
+                <ExtensionDetails id={activeFile.split(':').pop() || ''} />
               ) : (
                 <Editor onInlineAIRequest={(text, filePath) => setInlineAI({ text, filePath })} />
               )}
