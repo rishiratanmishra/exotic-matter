@@ -6,7 +6,8 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
+    "release": "npm run build && electron-builder build --win --x64"
   },
   "dependencies": {
     "@ant-design/icons": "^5.2.6",
@@ -52,5 +53,23 @@
     "vite-plugin-electron": "^0.29.1",
     "vite-plugin-electron-renderer": "^0.14.6",
     "wait-on": "^7.1.0"
+  },
+  "build": {
+    "appId": "com.exoticmatter.ide",
+    "productName": "Exotic Matter",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist",
+      "dist-electron",
+      "package.json"
+    ],
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "asar": true
   }
 }

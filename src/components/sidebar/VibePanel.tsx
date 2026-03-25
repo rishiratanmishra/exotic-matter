@@ -200,14 +200,16 @@ function VibeView({ tab, active, wvRef, onReady }: VibeViewProps) {
         className="absolute inset-0"
         style={{ opacity: active ? 1 : 0, pointerEvents: active ? 'auto' : 'none', transition: 'opacity 250ms ease' }}
       >
-        {/* @ts-expect-error */}
+        {/* @ts-ignore */}
         <webview
           ref={wvRef}
           src={tab.src}
-          partition={`persist:vibe-${tab.id}`}
-          style={{ width: '100%', height: '100%', border: 'none' }}
-          allowpopups="true"
-          useragent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+          {...({
+            partition: `persist:vibe-${tab.id}`,
+            style: { width: '100%', height: '100%', border: 'none' },
+            allowpopups: "true",
+            useragent: "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36"
+          } as any)}
         />
       </div>
     )
