@@ -200,55 +200,93 @@ function MenuBar() {
   ]
 
   return (
-    <div className="h-[30px] bg-[var(--bg-side)] flex items-center px-2 border-b border-[var(--border-main)] select-none drag z-50 flex-shrink-0">
-      <div className="flex items-center space-x-3 no-drag shrink-0">
-        <div className="flex items-center">
-          <img src="/icon.png" alt="Exotic Matter" className="w-[18px] h-[18px] rounded-[5px] object-cover mr-2 shadow-sm" />
-          <span className="text-[12px] font-bold text-[#f2f2f2] tracking-wide">Exotic Matter</span>
-        </div>
-        <div className="flex items-center space-x-0.5">
-          <MenuBarMenu label="File" items={fileMenuItems} />
-          <MenuBarMenu label="Edit" items={editMenuItems} />
-          <MenuBarMenu label="Selection" items={selectionMenuItems} />
-          <MenuBarMenu label="View" items={viewMenuItems} />
-          <MenuBarMenu label="Go" items={goMenuItems} />
-          <MenuBarMenu label="Run" items={runMenuItems} />
-          <MenuBarMenu label="Terminal" items={terminalMenuItems} />
-          <MenuBarMenu label="Help" items={helpMenuItems} />
-        </div>
-      </div>
-      
-      <div className="flex-1 flex justify-center no-drag px-4">
-        <button
-          onClick={() => dispatch({ type: 'SET_QUICK_OPEN', open: true })}
-          className="w-[420px] max-w-full relative group"
-        >
-          <div className="flex items-center w-full bg-[var(--bg-explorer)] border border-[var(--border-main)] text-[11px] px-8 py-1 rounded-md text-[var(--text-muted)] group-hover:bg-[var(--bg-side)] group-hover:border-[var(--text-muted)] transition-all">
-            <Search size={11} className="absolute left-2.5 text-[var(--text-muted)]" />
-            <span className="flex-1 text-center">Search files (Ctrl+P)</span>
-            <kbd className="text-[9px] bg-[var(--bg-main)] px-1 rounded text-[var(--text-muted)]">Ctrl+P</kbd>
-          </div>
-        </button>
-      </div>
+    <>
+      <style>{`
+        @keyframes vibe-diagonal {
+          0% { background-position: 100% 0%; }
+          100% { background-position: 0% 100%; }
+        }
 
-      <div className="flex items-center space-x-1 no-drag shrink-0">
-        {activeFile && !activeFile.startsWith('diff:') && (
-          <button onClick={handleRunFile} className="px-2 py-1 flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 rounded transition-all mr-1">
-            <Play size={12} fill="currentColor" />
-            <span className="text-[10px] font-bold">Run</span>
+        .vibe-party-dg {
+          background: linear-gradient(135deg, 
+            #050505 0%, 
+            #3d0f0f 10%, 
+            #050505 15%,
+            #3d320f 25%, 
+            #050505 30%,
+            #1a0f1a 40%, 
+            #050505 45%,
+            #0f0a1e 55%, 
+            #050505 60%,
+            #0a1a1a 70%, 
+            #050505 75%,
+            #3d0f0f 85%
+          ) !important;
+          background-size: 600% 600% !important;
+          animation: vibe-diagonal 15s ease-in-out infinite alternate !important;
+          border-color: rgba(107, 140, 255, 0.1) !important;
+        }
+
+        .vibe-party-accent {
+          background: linear-gradient(-45deg, #3a2a6e, #5e2a3e, #5e2a2a, #5e522a, #2a5e56, #3a2a6e) !important;
+          background-size: 400% 400% !important;
+          animation: vibe-diagonal 12s linear infinite alternate !important;
+        }
+      `}</style>
+
+      <div className={cn(
+        "h-[30px] flex items-center px-2 border-b border-[var(--border-main)] select-none drag z-50 flex-shrink-0 transition-all duration-700",
+        state.activeFile === 'vibe:studio' ? "vibe-party-dg" : "bg-[var(--bg-side)]"
+      )}>
+        <div className="flex items-center space-x-3 no-drag shrink-0">
+          <div className="flex items-center">
+            <img src="/icon.png" alt="Exotic Matter" className="w-[18px] h-[18px] rounded-[5px] object-cover mr-2 shadow-sm" />
+            <span className="text-[12px] font-bold text-[#f2f2f2] tracking-wide">Exotic Matter</span>
+          </div>
+          <div className="flex items-center space-x-0.5">
+            <MenuBarMenu label="File" items={fileMenuItems} />
+            <MenuBarMenu label="Edit" items={editMenuItems} />
+            <MenuBarMenu label="Selection" items={selectionMenuItems} />
+            <MenuBarMenu label="View" items={viewMenuItems} />
+            <MenuBarMenu label="Go" items={goMenuItems} />
+            <MenuBarMenu label="Run" items={runMenuItems} />
+            <MenuBarMenu label="Terminal" items={terminalMenuItems} />
+            <MenuBarMenu label="Help" items={helpMenuItems} />
+          </div>
+        </div>
+        
+        <div className="flex-1 flex justify-center no-drag px-4">
+          <button
+            onClick={() => dispatch({ type: 'SET_QUICK_OPEN', open: true })}
+            className="w-[420px] max-w-full relative group"
+          >
+            <div className="flex items-center w-full bg-[var(--bg-explorer)] border border-[var(--border-main)] text-[11px] px-8 py-1 rounded-md text-[var(--text-muted)] group-hover:bg-[var(--bg-side)] group-hover:border-[var(--text-muted)] transition-all">
+              <Search size={11} className="absolute left-2.5 text-[var(--text-muted)]" />
+              <span className="flex-1 text-center">Search files (Ctrl+P)</span>
+              <kbd className="text-[9px] bg-[var(--bg-main)] px-1 rounded text-[var(--text-muted)]">Ctrl+P</kbd>
+            </div>
           </button>
-        )}
-        <button onClick={() => window.em.windowMinimize()} className="w-8 h-[30px] flex items-center justify-center hover:bg-[var(--border-main)] transition-colors" title="Minimize">
-          <span className="text-[var(--text-muted)] text-lg leading-none mb-1">–</span>
-        </button>
-        <button onClick={() => window.em.windowMaximize()} className="w-8 h-[30px] flex items-center justify-center hover:bg-[var(--border-main)] transition-colors" title="Maximize">
-          <Maximize2 size={11} className="text-[var(--text-muted)]" />
-        </button>
-        <button onClick={() => window.em.windowClose()} className="w-8 h-[30px] flex items-center justify-center hover:bg-red-600 transition-colors group" title="Close">
-          <X size={13} className="text-[var(--text-muted)] group-hover:text-white" />
-        </button>
+        </div>
+
+        <div className="flex items-center space-x-1 no-drag shrink-0">
+          {activeFile && !activeFile.startsWith('diff:') && (
+            <button onClick={handleRunFile} className="px-2 py-1 flex items-center space-x-1 text-emerald-400 hover:text-emerald-300 hover:bg-emerald-400/10 rounded transition-all mr-1">
+              <Play size={12} fill="currentColor" />
+              <span className="text-[10px] font-bold">Run</span>
+            </button>
+          )}
+          <button onClick={() => window.em.windowMinimize()} className="w-8 h-[30px] flex items-center justify-center hover:bg-[var(--border-main)] transition-colors" title="Minimize">
+            <span className="text-[var(--text-muted)] text-lg leading-none mb-1">–</span>
+          </button>
+          <button onClick={() => window.em.windowMaximize()} className="w-8 h-[30px] flex items-center justify-center hover:bg-[var(--border-main)] transition-colors" title="Maximize">
+            <Maximize2 size={11} className="text-[var(--text-muted)]" />
+          </button>
+          <button onClick={() => window.em.windowClose()} className="w-8 h-[30px] flex items-center justify-center hover:bg-red-600 transition-colors group" title="Close">
+            <X size={13} className="text-[var(--text-muted)] group-hover:text-white" />
+          </button>
+        </div>
       </div>
-    </div>
+    </>
   )
 }
 
@@ -455,7 +493,10 @@ export default function Shell() {
       <div className="flex flex-1 overflow-hidden">
         {/* Activity Bar */}
         {!state.zenMode && (
-          <div className="w-[48px] flex flex-col items-center py-3 bg-[var(--bg-side)] border-r border-[var(--border-main)] z-30 flex-shrink-0">
+          <div className={cn(
+            "w-[48px] flex flex-col items-center py-3 border-r border-[var(--border-main)] z-30 flex-shrink-0 transition-all duration-700",
+            activeFile === 'vibe:studio' ? "vibe-party-dg" : "bg-[var(--bg-side)]"
+          )}>
             {NAV_ITEMS.map(item => (
               <button
                 key={item.id}
@@ -512,7 +553,8 @@ export default function Shell() {
           <div 
             style={{ width: sidebarWidth ?? 260 }}
             className={cn(
-              "bg-[var(--bg-side)] border-r border-[var(--border-main)] flex flex-col flex-shrink-0 animate-in slide-in-from-left duration-150 relative",
+              "border-r border-[var(--border-main)] flex flex-col flex-shrink-0 animate-in slide-in-from-left duration-150 relative transition-all duration-700",
+              activeFile === 'vibe:studio' ? "vibe-party-dg" : "bg-[var(--bg-side)]",
               resizing && "pointer-events-none"
             )}
           >
