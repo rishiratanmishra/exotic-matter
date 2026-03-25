@@ -40,11 +40,13 @@ export interface IDEState {
   terminalOpen: boolean
   terminalHeight: number
   splitTerminal: boolean
+  sidebarWidth: number
+  chatWidth: number
   extensions: Extension[]
 
   // UI
   sidebarOpen: boolean
-  activeTab: 'explorer' | 'search' | 'git' | 'chat' | 'extensions'
+  activeTab: 'explorer' | 'search' | 'git' | 'chat' | 'extensions' | 'vibe'
   chatOpen: boolean
   theme: 'dark' | 'light' | 'monokai'
   quickOpen: boolean
@@ -79,6 +81,8 @@ type Action =
   | { type: 'SET_QUICK_OPEN'; open: boolean; query?: string }
   | { type: 'SET_COMMAND_PALETTE'; open: boolean }
   | { type: 'SET_AUTO_SAVE'; enabled: boolean }
+  | { type: 'SET_SIDEBAR_WIDTH'; width: number }
+  | { type: 'SET_CHAT_WIDTH'; width: number }
   | { type: 'SET_ZEN_MODE'; enabled: boolean }
   | { type: 'TOGGLE_ZEN_MODE' }
   | { type: 'SET_CUSTOM_THEME'; theme: Record<string, string> | null }
@@ -214,6 +218,12 @@ function ideReducer(state: IDEState, action: Action): IDEState {
     case 'SET_ACTIVE_TAB':
       return { ...state, activeTab: action.tab, sidebarOpen: true }
 
+    case 'SET_SIDEBAR_WIDTH':
+      return { ...state, sidebarWidth: Math.max(160, Math.min(600, action.width)) }
+
+    case 'SET_CHAT_WIDTH':
+      return { ...state, chatWidth: Math.max(280, Math.min(800, action.width)) }
+
     case 'TOGGLE_CHAT':
       return { ...state, chatOpen: !state.chatOpen }
 
@@ -263,8 +273,10 @@ const initialState: IDEState = {
   splitTerminal: false,
   extensions: [],
   sidebarOpen: true,
+  sidebarWidth: 260,
   activeTab: 'explorer',
   chatOpen: true,
+  chatWidth: 380,
   theme: 'dark',
   quickOpen: false,
   quickOpenQuery: '',
@@ -311,6 +323,8 @@ function persistState(state: IDEState) {
         sidebarOpen: state.sidebarOpen,
         chatOpen: state.chatOpen,
         terminalHeight: state.terminalHeight,
+        sidebarWidth: state.sidebarWidth,
+        chatWidth: state.chatWidth,
         autoSave: state.autoSave,
       })
     )
@@ -342,6 +356,8 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
             sidebarOpen: saved.sidebarOpen ?? true,
             chatOpen: saved.chatOpen ?? true,
             terminalHeight: saved.terminalHeight ?? 260,
+            sidebarWidth: saved.sidebarWidth ?? 260,
+            chatWidth: saved.chatWidth ?? 380,
             autoSave: saved.autoSave ?? true,
           },
         })
@@ -399,7 +415,7 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
     return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
-  }, [state.workspacePath, state.openFiles, state.activeFile, state.theme, state.chatOpen, state.sidebarOpen])
+  }, [state.workspacePath, state.openFiles, state.activeFile, state.theme, state.chatOpen, state.sidebarOpen, state.sidebarWidth, state.chatWidth])
 
   // Sync theme to body class for global CSS variables
   useEffect(() => {

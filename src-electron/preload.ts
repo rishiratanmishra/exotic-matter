@@ -69,4 +69,7 @@ contextBridge.exposeInMainWorld('em', {
   getModels: () => ipcRenderer.invoke('get-models'),
   aiChat: (payload: { model: string; messages: any[]; stream: boolean }) =>
     ipcRenderer.invoke('ai-chat', payload),
+
+  // Shell
+  openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 })

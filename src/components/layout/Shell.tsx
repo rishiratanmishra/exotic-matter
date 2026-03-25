@@ -3,7 +3,7 @@ import MenuBarMenu from './MenuBarMenu'
 import {
   Files, MessageSquare, Search, GitBranch, Sparkles, Settings,
   Terminal as TerminalIcon, X, Maximize2, Command, FileCode,
-  Play, Plus, Layers, FilePlus, FolderPlus, RefreshCw, ChevronRight, Keyboard
+  Play, Plus, Layers, FilePlus, FolderPlus, RefreshCw, ChevronRight, Keyboard, Coffee
 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -21,6 +21,7 @@ import InlineAIWidget from '@/components/InlineAIWidget'
 import KeyboardShortcuts from '../KeyboardShortcuts'
 import ExtensionsSidebar from '../sidebar/ExtensionsSidebar'
 import ExtensionDetails from '../ExtensionDetails'
+import VibePanel from '../sidebar/VibePanel'
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 
@@ -31,6 +32,7 @@ const NAV_ITEMS = [
   { id: 'git',      icon: GitBranch, label: 'Source Control' },
   { id: 'chat',     icon: 'custom-icon', label: 'Exotic Matter AI' },
   { id: 'extensions', icon: Layers, label: 'Extensions' },
+  { id: 'vibe',    icon: Coffee, label: 'Vibe Mode' },
 ] as const
 
 // ─── MenuBar ──────────────────────────────────────────────────────────────────
@@ -262,12 +264,13 @@ export default function Shell() {
   }, [dispatch, state])
 
   const {
-    activeTab, sidebarOpen, workspacePath, terminalOpen, terminalHeight,
+    activeTab, sidebarOpen, sidebarWidth, workspacePath, terminalOpen, terminalHeight,
     terminals, activeTerminalId, splitTerminal, quickOpen, quickOpenQuery,
-    openFiles, activeFile, chatOpen, commandPaletteOpen, fileStates
+    openFiles, activeFile, chatOpen, chatWidth, commandPaletteOpen, fileStates
   } = state
 
   const [inlineAI, setInlineAI] = React.useState<{ text: string; filePath: string } | null>(null)
+  const [resizing, setResizing] = React.useState<'sidebar' | 'chat' | 'terminal' | null>(null)
   const [newItemState, setNewItemState] = React.useState<{ type: 'file' | 'folder'; parentPath: string } | null>(null)
   const newItemInputRef = useRef<HTMLInputElement>(null)
 
@@ -359,15 +362,47 @@ export default function Shell() {
   const handleTerminalResizeDrag = useCallback((e: React.MouseEvent) => {
     const startY = e.clientY
     const startHeight = terminalHeight
+    setResizing('terminal')
     const onMove = (me: MouseEvent) =>
       dispatch({ type: 'SET_TERMINAL_HEIGHT', height: startHeight + (startY - me.clientY) })
     const onUp = () => {
+      setResizing(null)
       document.removeEventListener('mousemove', onMove)
       document.removeEventListener('mouseup', onUp)
     }
     document.addEventListener('mousemove', onMove)
     document.addEventListener('mouseup', onUp)
   }, [terminalHeight, dispatch])
+
+  const handleSidebarResizeDrag = useCallback((e: React.MouseEvent) => {
+    const startX = e.clientX
+    const startWidth = sidebarWidth
+    setResizing('sidebar')
+    const onMove = (me: MouseEvent) =>
+      dispatch({ type: 'SET_SIDEBAR_WIDTH', width: startWidth + (me.clientX - startX) })
+    const onUp = () => {
+      setResizing(null)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [sidebarWidth, dispatch])
+
+  const handleChatResizeDrag = useCallback((e: React.MouseEvent) => {
+    const startX = e.clientX
+    const startWidth = chatWidth
+    setResizing('chat')
+    const onMove = (me: MouseEvent) =>
+      dispatch({ type: 'SET_CHAT_WIDTH', width: startWidth + (startX - me.clientX) })
+    const onUp = () => {
+      setResizing(null)
+      document.removeEventListener('mousemove', onMove)
+      document.removeEventListener('mouseup', onUp)
+    }
+    document.addEventListener('mousemove', onMove)
+    document.addEventListener('mouseup', onUp)
+  }, [chatWidth, dispatch])
 
   function addTerminal() {
     const id = Date.now()
@@ -427,6 +462,10 @@ export default function Shell() {
                 onClick={() => {
                   if (item.id === 'chat') {
                     dispatch({ type: 'TOGGLE_CHAT' })
+                  } else if (item.id === 'vibe') {
+                    // Open Vibe Mode as a special full-area panel
+                    openFile('vibe:studio')
+                    dispatch({ type: 'SET_SIDEBAR_OPEN', open: false })
                   } else if (activeTab === item.id && sidebarOpen) {
                     dispatch({ type: 'TOGGLE_SIDEBAR' })
                   } else {
@@ -436,8 +475,10 @@ export default function Shell() {
                 }}
                 className={cn(
                   'p-3 mb-1 cursor-pointer transition-all duration-200 group relative rounded-md w-9',
-                  activeTab === item.id && sidebarOpen && item.id !== 'chat'
-                    ? 'text-white bg-[var(--border-main)]'
+                  (item.id !== 'chat' && item.id !== 'vibe' && activeTab === item.id && sidebarOpen)
+                  || (item.id === 'vibe' && activeFile === 'vibe:studio')
+                  || (item.id === 'chat' && chatOpen)
+                    ? 'text-[#6b8cff] bg-[#6b8cff]/10'
                     : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border-main)]'
                 )}
                 title={item.label}
@@ -447,8 +488,10 @@ export default function Shell() {
                 ) : (
                   <item.icon size={20} strokeWidth={1.5} />
                 )}
-                {activeTab === item.id && sidebarOpen && item.id !== 'chat' && (
-                  <div className="absolute left-0.5 top-2 bottom-2 w-[2px] bg-white rounded-full" />
+                {((item.id !== 'chat' && item.id !== 'vibe' && activeTab === item.id && sidebarOpen)
+                || (item.id === 'vibe' && activeFile === 'vibe:studio')
+                || (item.id === 'chat' && chatOpen)) && (
+                  <div className="absolute left-0.5 top-2 bottom-2 w-[2px] bg-[#6b8cff] rounded-full" />
                 )}
               </button>
             ))}
@@ -466,7 +509,18 @@ export default function Shell() {
 
         {/* Sidebar Panel */}
         {!state.zenMode && sidebarOpen && (
-          <div className="w-[260px] bg-[var(--bg-side)] border-r border-[var(--border-main)] flex flex-col flex-shrink-0 animate-in slide-in-from-left duration-150">
+          <div 
+            style={{ width: sidebarWidth ?? 260 }}
+            className={cn(
+              "bg-[var(--bg-side)] border-r border-[var(--border-main)] flex flex-col flex-shrink-0 animate-in slide-in-from-left duration-150 relative",
+              resizing && "pointer-events-none"
+            )}
+          >
+            {/* Horizontal Resizer (Right side of sidebar) */}
+            <div 
+              onMouseDown={handleSidebarResizeDrag}
+              className="absolute top-0 bottom-0 -right-[2px] w-[4px] cursor-ew-resize hover:bg-blue-500/30 transition-colors z-20 pointer-events-auto"
+            />
             <div className="h-[34px] flex items-center px-3 justify-between border-b border-[var(--border-main)] flex-shrink-0">
               <span className="text-[9px] uppercase tracking-[0.18em] font-black text-[var(--text-muted)]">{activeTab}</span>
               {activeTab === 'explorer' && (
@@ -503,6 +557,8 @@ export default function Shell() {
                 <GitSidebar workspacePath={workspacePath} onShowDiff={handleShowDiff} />
               ) : activeTab === 'extensions' ? (
                 <ExtensionsSidebar />
+              ) : activeTab === 'vibe' ? (
+                <VibePanel />
               ) : null}
             </div>
           </div>
@@ -513,10 +569,11 @@ export default function Shell() {
             <div className="h-[34px] bg-[var(--bg-main)] flex items-center border-b border-[var(--border-main)] overflow-x-auto no-scrollbar flex-shrink-0">
               {openFiles.map(path => {
                 const isKeyboardShortcuts = path === 'settings:keyboard-shortcuts'
+                const isVibe = path === 'vibe:studio'
                 const isDiff = path.startsWith('diff:')
-                const actualPath = isDiff ? path.replace('diff:', '') : (isKeyboardShortcuts ? path : path)
-                const fileName = isKeyboardShortcuts ? 'Keyboard Shortcuts' : (actualPath.split(/[/\\]/).pop() ?? actualPath)
-                const isDirty = !isDiff && !isKeyboardShortcuts && fileStates[path]?.isDirty
+                const actualPath = isDiff ? path.replace('diff:', '') : path
+                const fileName = isKeyboardShortcuts ? 'Keyboard Shortcuts' : isVibe ? '⚡ Vibe Mode' : (actualPath.split(/[/\\]/).pop() ?? actualPath)
+                const isDirty = !isDiff && !isKeyboardShortcuts && !isVibe && fileStates[path]?.isDirty
                 return (
                   <div
                     key={path}
@@ -530,11 +587,13 @@ export default function Shell() {
                   >
                     {isKeyboardShortcuts 
                       ? <Keyboard size={11} className="text-blue-400 flex-shrink-0" />
-                      : isDiff
-                        ? <GitBranch size={11} className="text-amber-400 flex-shrink-0" />
-                        : path.startsWith('extension:')
-                          ? <Layers size={11} className="text-blue-400 flex-shrink-0" />
-                          : <FileCode size={11} className={activeFile === path ? 'text-blue-400 flex-shrink-0' : 'text-[var(--text-muted)] flex-shrink-0'} />
+                      : isVibe
+                        ? <Coffee size={11} className="text-[#6b8cff] flex-shrink-0" />
+                        : isDiff
+                          ? <GitBranch size={11} className="text-amber-400 flex-shrink-0" />
+                          : path.startsWith('extension:')
+                            ? <Layers size={11} className="text-blue-400 flex-shrink-0" />
+                            : <FileCode size={11} className={activeFile === path ? 'text-blue-400 flex-shrink-0' : 'text-[var(--text-muted)] flex-shrink-0'} />
                     }
                     <span className={cn('text-[12px] truncate max-w-[130px]', isDiff && 'italic text-amber-400/70', path.startsWith('extension:') && 'font-bold')}>
                       {isDirty && <span className="text-amber-400 mr-1">●</span>}
@@ -555,9 +614,18 @@ export default function Shell() {
           {!state.zenMode && renderBreadcrumbs()}
 
           <div className="flex-1 flex flex-col overflow-hidden min-h-0 relative">
-            <div className="flex-1 overflow-hidden">
+            <div className="flex-1 overflow-hidden relative">
+              {/* Vibe Mode Persistence: Keep mounted in background so music doesn't stop */}
+              {openFiles.includes('vibe:studio') && (
+                <div className={cn("absolute inset-0 z-10", activeFile !== 'vibe:studio' && "invisible pointer-events-none")}>
+                  <VibePanel />
+                </div>
+              )}
+
               {activeFile === 'settings:keyboard-shortcuts' ? (
                 <KeyboardShortcuts />
+              ) : activeFile === 'vibe:studio' ? (
+                null
               ) : activeFile?.startsWith('diff:') ? (
                 <DiffEditor path={activeFile.replace('diff:', '')} workspacePath={workspacePath} />
               ) : activeFile?.startsWith('extension:') ? (
@@ -630,9 +698,25 @@ export default function Shell() {
         </div>
 
         {!state.zenMode && chatOpen && (
-          <div className="w-[380px] bg-[var(--bg-side)] border-l border-[var(--border-main)] flex flex-col flex-shrink-0 animate-in slide-in-from-right duration-150 relative">
+          <div 
+            style={{ width: chatWidth ?? 380 }}
+            className={cn(
+              "bg-[var(--bg-side)] border-l border-[var(--border-main)] flex flex-col flex-shrink-0 animate-in slide-in-from-right duration-150 relative",
+              resizing && "pointer-events-none"
+            )}
+          >
+            {/* Horizontal Resizer (Left side of chat) */}
+            <div 
+              onMouseDown={handleChatResizeDrag}
+              className="absolute top-0 bottom-0 -left-[2px] w-[4px] cursor-ew-resize hover:bg-blue-500/30 transition-colors z-20 pointer-events-auto"
+            />
             <Chat />
           </div>
+        )}
+
+        {/* Global Resizing Overlay — prevents iframes/webviews from stealing mouse events */}
+        {resizing && (
+          <div className="fixed inset-0 z-50 cursor-ew-resize select-none" style={{ cursor: resizing === 'terminal' ? 'ns-resize' : 'ew-resize' }} />
         )}
       </div>
 

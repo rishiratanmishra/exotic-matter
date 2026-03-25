@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, dialog, session } from 'electron'
+import { app, BrowserWindow, ipcMain, dialog, session, shell } from 'electron'
 import path, { join, resolve, normalize } from 'path'
 import { readdir, readFile, stat, writeFile, mkdir, unlink, rmdir, rename } from 'fs/promises'
 import * as fs from 'fs'
@@ -45,6 +45,7 @@ function createWindow() {
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false, // required for preload
+      webviewTag: true, // required for Vibe Mode <webview> elements
     },
     frame: false,
     titleBarStyle: 'hidden',
@@ -74,7 +75,31 @@ function createWindow() {
     })
   })
 
+  // ─── Vibe Mode: Ad-free persistent sessions ──────────────────────────────
+  const AD_DOMAINS = [
+    'doubleclick.net', 'googlesyndication.com', 'adservice.google.com',
+    'googletagmanager.com', 'google-analytics.com', 'imasdk.googleapis.com',
+    'ads.youtube.com', 'youtube.com/api/stats/ads', 'amazon-adsystem.com',
+    'adnxs.com', 'moatads.com', 'securepubads.g.doubleclick.net',
+    'pagead2.googlesyndication.com', 'static.ads-twitter.com',
+  ]
+
+  const vibeSessions = ['vibe-spotify', 'vibe-youtube', 'vibe-reels'].map(
+    name => session.fromPartition(`persist:${name}`)
+  )
+
+  for (const vibeSession of vibeSessions) {
+    vibeSession.webRequest.onBeforeRequest(
+      { urls: ['*://*/*'] },
+      (details, callback) => {
+        const isAd = AD_DOMAINS.some(domain => details.url.includes(domain))
+        callback({ cancel: isAd })
+      }
+    )
+  }
+
   win.once('ready-to-show', () => win.show())
+
 
   if (process.env.VITE_DEV_SERVER_URL) {
     win.loadURL(process.env.VITE_DEV_SERVER_URL)
@@ -93,6 +118,17 @@ app.whenReady().then(() => {
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') app.quit()
+})
+
+// ─── Shell: open URLs in system browser (e.g. Google OAuth for Vibe Mode) ─────
+ipcMain.handle('open-external', (_e, url: string) => {
+  const allowed = [
+    'accounts.google.com', 'open.spotify.com', 'youtube.com',
+    'instagram.com', 'spotify.com', 'accounts.spotify.com',
+  ]
+  if (allowed.some(d => url.includes(d))) {
+    shell.openExternal(url)
+  }
 })
 
 // ─── Extensions Management ────────────────────────────────────────────────────
