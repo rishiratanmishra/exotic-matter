@@ -44,9 +44,72 @@ const TABS: TabDef[] = [
 
 const PLATFORM_CSS: Record<string, string> = {
   jiosaavn: `
-    /* Hide JioSaavn ads and banners */
-    .c-ads, [class*="ad-"], [id*="ad-"],
+    /* ── Ad & Banner Removal ── */
+    .c-ads, .c-ad, .c-ad__unit, [id*="desktop_config"], #audio_desktop, 
     .banner-container, .lhs-ad, .rhs-ad { display: none !important; }
+
+    /* ── Precise Dark Theme ── */
+    html, body, #root, .o-app, .o-playbar, .home.banner, .c-content, .o-wrapper { 
+      background-color: #0b0e14 !important; 
+      color: #f2f2f2 !important; 
+    }
+    
+    /* Sidebars & Global Containers */
+    .c-header, .c-header-bg, .c-nav, .c-sidebar, .u-bg-white, .u-bg-gray-lightest, 
+    .o-wrapper, .o-block, .u-shadow-soft, .c-queue, .o-sidebar, 
+    .c-aside, .c-aside--fixed, .c-aside--flyout, .c-aside--right,
+    .o-list-block, .c-btn, .c-drag, .o-block__img, .c-dropdown { 
+      background-color: #0b0e14 !important; 
+      color: #f2f2f2 !important; 
+      border-color: #1a1e26 !important;
+      box-shadow: none !important;
+    }
+
+    /* Search & Inputs */
+    #search, .c-search, .rbt-input-main, .rbt-input-hint, .c-input-search, .c-input { 
+      background-color: #1a1e26 !important; 
+      color: #f2f2f2 !important; 
+      border: 1px solid #2a2e36 !important;
+    }
+    .rbt-input-main::placeholder, .c-input::placeholder { color: #8899a6 !important; }
+    
+    /* Fixed White Backgrounds by class pattern (Aggressive) */
+    [class*="u-bg-white"], [class*="u-bg-gray-lighter"], [class*="u-bg-js-blue-lightest"],
+    [class*="c-btn--ghost"], [class*="c-btn--secondary"] {
+      background-color: #0b0e14 !important;
+      color: #f2f2f2 !important;
+    }
+    
+    /* Text, Headers & Links */
+    h1, h2, h3, h4, .u-h3, .u-h4, .u-subhead, .u-color-js-gray, .u-color-gray-dark, a { color: #f2f2f2 !important; }
+    .u-color-gray-medium, .c-nav__link, .o-list-block__item { color: #8899a6 !important; }
+    .c-nav__link:hover, .o-list-block__item:hover { color: #6b8cff !important; }
+    
+    /* Hide Bottom Player & Banners (User Request) */
+    .c-player, #player, .o-playbar, .c-player-wrapper, .c-player--fixed,
+    [class*="banner"], [class*="promo"], [class*="trial"], 
+    .o-app__banner, .c-banner, .u-bg-js-blue-lightest { 
+      display: none !important; 
+    }
+
+    /* Flag / Song Info Area & Global Text */
+    .c-player__current, .o-flag, .o-flag__img, .o-flag__body,
+    h1, h2, h3, h4, .u-h3, .u-h4, .u-subhead, .u-color-js-gray, .u-color-gray-dark, a { 
+      background-color: transparent !important; 
+      color: #f2f2f2 !important; 
+    }
+    
+    /* Nuclear Blanket Rule for stubborn white elements */
+    [style*="background-color: #fff"], [style*="background-color: white"], 
+    [style*="background: #fff"], [style*="background: white"],
+    [style*="background-color:rgb(255, 255, 255)"], [style*="background-color: rgb(255, 255, 255)"] {
+      background-color: #0b0e14 !important;
+      color: #f2f2f2 !important;
+    }
+
+    /* Professional Scrollbars */
+    ::-webkit-scrollbar { width: 8px; background-color: #0b0e14; }
+    ::-webkit-scrollbar-thumb { background-color: #2a2e36; border-radius: 4px; }
   `,
   radiogarden: '', // clean site
   youtube: `
@@ -57,6 +120,10 @@ const PLATFORM_CSS: Record<string, string> = {
     .ytp-ad-player-overlay, #masthead-ad,
     ytd-rich-item-renderer:has([is-ad]),
     ytd-compact-video-renderer:has([is-ad]) { display: none !important; }
+
+    /* Forced Dark Mode (Fallback if not logged in) */
+    html, [dark] { background-color: #0b0e14 !important; }
+    ytd-app, #content, #page-manager, ytd-masthead { background-color: #0b0e14 !important; }
 
     /* ── Layout cleanup: collapse guide sidebar ── */
     ytd-guide-renderer, #guide, tp-yt-app-drawer,
@@ -75,7 +142,7 @@ const PLATFORM_CSS: Record<string, string> = {
     /* ── Hide comments ── */
     ytd-comments, #comments { display: none !important; }
 
-    /* ── Shorts: full screen style ── */
+    /* ── Shorts ── */
     ytd-reel-video-renderer { height: 100% !important; }
   `,
   reels: `
@@ -102,7 +169,7 @@ function VibeView({ tab, active, wvRef, onReady }: VibeViewProps) {
 
     const handleReady = () => {
       onReady()
-      wv.insertCSS(PLATFORM_CSS[tab.id] ?? '').catch(() => {})
+      wv.insertCSS(PLATFORM_CSS[tab.id] ?? '').catch(() => { })
     }
 
     const onNavigate = (e: any) => {
@@ -113,7 +180,7 @@ function VibeView({ tab, active, wvRef, onReady }: VibeViewProps) {
         'facebook.com/login',
       ]
       if (OAUTH_HOSTS.some(h => e.url?.includes(h))) {
-        e.preventDefault();(window as any).em?.openExternal?.(e.url)
+        e.preventDefault(); (window as any).em?.openExternal?.(e.url)
       }
     }
 
@@ -200,7 +267,7 @@ export default function VibePanel() {
     TABS.forEach(t => {
       if (t.id !== activeTab && readyTabs.current.has(t.id)) {
         const wv = wvRefs.current[t.id]?.current
-        if (wv) wv.executeJavaScript(PAUSE_SCRIPT).catch(() => {})
+        if (wv) wv.executeJavaScript(PAUSE_SCRIPT).catch(() => { })
       }
     })
   }, [activeTab])
