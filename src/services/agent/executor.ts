@@ -1,4 +1,4 @@
-// Global window.capsicode types are in src/global.d.ts
+// Global window.em types are in src/global.d.ts
 import { OllamaService, OllamaMessage } from '../ollama'
 import { AGENT_TOOLS, buildToolsPromptSection } from './tools'
 
@@ -16,7 +16,7 @@ function buildSystemPrompt(ctx: AgentContext): string {
     ? ctx.allFiles.slice(0, 300).join('\n')
     : '(no workspace open)'
 
-  return `You are CapsiCode AI — an expert coding assistant embedded in a local IDE.
+  return `You are Exotic Matter AI — an expert coding assistant embedded in a local IDE.
 
 ## Context
 - Workspace: ${ctx.workspacePath ?? 'none'}
@@ -129,7 +129,7 @@ export class AgentExecutor {
 
     this.messages.push({ role: 'user', content: task })
 
-    const MAX_TOOL_CALLS = 12
+    const MAX_TOOL_CALLS = 20
     let toolCallsLeft = MAX_TOOL_CALLS
 
     while (toolCallsLeft > 0) {
@@ -154,11 +154,25 @@ export class AgentExecutor {
       onUpdate(`⚙ Running tool: ${toolCall.tool}`)
       this.messages.push({ role: 'assistant', content: response })
 
-      const result = await this.executeTool(toolCall.tool, toolCall.args)
+      const result = await this.executeTool(toolCall.tool, toolCall.args, onUpdate)
       this.messages.push({
         role: 'user', // Ollama doesn't have a "tool" role; use user to pass results
         content: `[Tool result for ${toolCall.tool}]\n${result}`,
       })
+
+      // Self-Healing Trigger: If it proposed an edit, auto-verify it (optional but implemented for Agentic mode)
+      if (toolCall.tool === 'patch_edit' && this.context.activeFile && this.context.activeFile.endsWith('.ts')) {
+         onUpdate(`🔍 Verifying system integrity...`)
+         const verifyCmd = `npx tsc --noEmit`
+         const verifyResult = await this.executeTool('execute_command', { command: verifyCmd }, onUpdate)
+         
+         if (verifyResult.includes('Error') || verifyResult.includes('Failed') || verifyResult.includes('error TS')) {
+             this.messages.push({
+                 role: 'user',
+                 content: `CRITICAL: The recent edit caused typecheck to fail. Fix the following errors:\n\n${verifyResult}`
+             })
+         }
+      }
 
       toolCallsLeft--
     }
@@ -166,22 +180,38 @@ export class AgentExecutor {
     return 'Reached maximum tool call limit. Ask me to continue if needed.'
   }
 
-  private async executeTool(name: string, args: Record<string, any>): Promise<string> {
+  private async executeTool(name: string, args: Record<string, any>, onUpdate: (msg: string) => void): Promise<string> {
     try {
       switch (name) {
+        case 'execute_command': {
+          onUpdate(`🏃 Running: ${args.command}`)
+          const root = this.context.workspacePath || ''
+          const res = await window.em.execCommand(root, args.command)
+          return res.output || '(empty output)'
+        }
+
+        case 'patch_edit': {
+          onUpdate(`🩹 Applying patch...`)
+          const res = await window.em.patchFile(args.path, args.searchQuery, args.replaceWith)
+          if (!res.success) {
+            return `❌ Patch Failed: ${res.error}`
+          }
+          return `✅ Patch applied to ${args.path}`
+        }
+
         case 'read_file': {
-          const content = await window.capsicode.readFile(args.path)
+          const content = await window.em.readFile(args.path)
           return content.length > 0 ? content : '(empty file)'
         }
 
         case 'write_file': {
-          await window.capsicode.writeFile(args.path, args.content)
+          await window.em.writeFile(args.path, args.content)
           return `✅ Wrote ${args.path}`
         }
 
         case 'propose_edit': {
           // Read current content to show a diff
-          const original = await window.capsicode.readFile(args.path)
+          const original = await window.em.readFile(args.path)
           // Format with safe delimiter so Chat.tsx can parse reliably
           return [
             `PROPOSAL_START`,
@@ -197,7 +227,7 @@ export class AgentExecutor {
         }
 
         case 'list_dir': {
-          const files = await window.capsicode.listDir(args.path)
+          const files = await window.em.listDir(args.path)
           return JSON.stringify(
             files.map((f: any) => ({ name: f.name, isDir: f.isDir, path: f.path })),
             null,
@@ -207,12 +237,23 @@ export class AgentExecutor {
 
         case 'search_workspace': {
           if (!this.context.workspacePath) return 'No workspace is open.'
-          const results = await window.capsicode.searchWorkspace(this.context.workspacePath, args.query)
+          const results = await window.em.searchWorkspace(this.context.workspacePath, args.query)
           if (!results.length) return 'No results found.'
           return results
             .slice(0, 20)
             .map((r: any) => `${r.path}:${r.line}: ${r.content}`)
             .join('\n')
+        }
+
+        case 'execute_extension_command': {
+          onUpdate(`🔌 Executing: ${args.commandId}`)
+          const res = await window.em.executeExtensionCommand(args.commandId, args.args || [])
+          return res && res.error ? `Error: ${res.error}` : JSON.stringify(res)
+        }
+
+        case 'list_extension_commands': {
+          const cmds = await window.em.getExtensionCommands()
+          return JSON.stringify(cmds)
         }
 
         default:

@@ -29,14 +29,14 @@ export default function QuickOpen({ workspacePath, onSelect, onClose, initialQue
     { label: 'View: Search', category: 'View', action: () => { (window as any).dispatch({ type: 'SET_ACTIVE_TAB', tab: 'search' }); (window as any).dispatch({ type: 'SET_SIDEBAR_OPEN', open: true }); onClose() } },
     { label: 'Git: Status', category: 'Git', action: () => { (window as any).dispatch({ type: 'SET_ACTIVE_TAB', tab: 'git' }); (window as any).dispatch({ type: 'SET_SIDEBAR_OPEN', open: true }); onClose() } },
     { label: 'Tasks: Run Task', category: 'Tasks', action: () => {} },
-    { label: 'File: Save', category: 'File', action: () => { window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'save' } })); onClose() } },
-    { label: 'File: Save All', category: 'File', action: () => { window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'save-all' } })); onClose() } },
+    { label: 'File: Save', category: 'File', action: () => { window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'save' } })); onClose() } },
+    { label: 'File: Save All', category: 'File', action: () => { window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'save-all' } })); onClose() } },
   ]
 
   useEffect(() => {
     const init = async () => {
       if (!workspacePath) return
-      const all = await window.capsicode.listAllFiles(workspacePath)
+      const all = await window.em.listAllFiles(workspacePath)
       setFiles(all)
       setFiltered(all.slice(0, 10))
     }

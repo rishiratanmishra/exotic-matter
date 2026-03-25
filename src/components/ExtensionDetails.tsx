@@ -22,14 +22,14 @@ export default function ExtensionDetails({ id }: ExtensionDetailsProps) {
     const fetchDetails = async () => {
       setLoading(true)
       try {
-        const data = await window.capsicode.getExtensionDetails(id)
+        const data = await window.em.getExtensionDetails(id)
         if (data) {
           setExt(data.meta)
           setReadme(data.readme)
           
           // Proxy the icon
           const originalIcon = data.meta.iconUrl || `https://open-vsx.org/api/${data.meta.namespace}/${data.meta.name}/${data.meta.version}/file/extension/icon.png`
-          const proxied = await window.capsicode.getExternalImage(originalIcon)
+          const proxied = await window.em.getExternalImage(originalIcon)
           setIconProxy(proxied)
         }
       } catch (e) {
@@ -45,7 +45,7 @@ export default function ExtensionDetails({ id }: ExtensionDetailsProps) {
     if (!ext) return
     setInstalling(true)
     try {
-      const res = await window.capsicode.installExtension(`${ext.namespace}.${ext.name}`, ext.version)
+      const res = await window.em.installExtension(`${ext.namespace}.${ext.name}`, ext.version)
       if (res.success) {
         await refreshExtensions()
       } else {

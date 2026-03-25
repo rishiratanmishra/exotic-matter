@@ -1,6 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
-contextBridge.exposeInMainWorld('capsicode', {
+contextBridge.exposeInMainWorld('em', {
   // App
   getVersion: () => ipcRenderer.invoke('get-version'),
   getAppPath: () => ipcRenderer.invoke('get-app-path'),
@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('capsicode', {
 
   // Search
   searchWorkspace: (rootPath: string, query: string) => ipcRenderer.invoke('search-workspace', rootPath, query),
+
+  // Agent Actions
+  execCommand: (rootPath: string, command: string) => ipcRenderer.invoke('execute-command', rootPath, command),
+  patchFile: (path: string, searchQuery: string, replaceWith: string) => ipcRenderer.invoke('patch-file', path, searchQuery, replaceWith),
+
 
   // Terminal PTY
   terminalSpawn: (id: number) => ipcRenderer.send('terminal-spawn', id),
@@ -53,6 +58,10 @@ contextBridge.exposeInMainWorld('capsicode', {
   uninstallExtension: (id: string) => ipcRenderer.invoke('uninstall-extension', id),
   searchMarketplace: (query: string) => ipcRenderer.invoke('search-marketplace', query),
   installExtension: (id: string, version: string) => ipcRenderer.invoke('install-extension', { id, version }),
+
+  // Commands
+  getExtensionCommands: () => ipcRenderer.invoke('get-extension-commands'),
+  executeExtensionCommand: (commandId: string, args: any[]) => ipcRenderer.invoke('execute-extension-command', commandId, args),
   getExtensionDetails: (id: string) => ipcRenderer.invoke('get-extension-details', id),
   getExternalImage: (url: string) => ipcRenderer.invoke('get-external-image', url),
 

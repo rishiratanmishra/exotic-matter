@@ -17,15 +17,15 @@ const DiffEditor: React.FC<DiffEditorProps> = ({ path, workspacePath }) => {
       if (!workspacePath) return
       setLoading(true)
       try {
-        const original = await window.capsicode.readFile(path)
-        const diffText = await window.capsicode.gitDiff(workspacePath, path)
+        const original = await window.em.readFile(path)
+        const diffText = await window.em.gitDiff(workspacePath, path)
         
         // This is a simplified way to reconstruct the "new" value for visualization.
         // In a real IDE, we'd use the current disk state vs HEAD.
         // For git unstaged changes, readFile(path) IS the newValue.
         // We need the HEAD version as oldValue.
         
-        const headContent = await window.capsicode.readFile(`HEAD:${path}`) // Wait, I need a main process helper for this
+        const headContent = await window.em.readFile(`HEAD:${path}`) // Wait, I need a main process helper for this
         // Actually, let's just use the current file as newValue and previous as oldValue if possible.
         // But getGitDiff already gives the colored text.
         

@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useCallback } from 'react'
 import MenuBarMenu from './MenuBarMenu'
 import {
-  Files, MessageSquare, Search, GitBranch, Bot, Settings,
+  Files, MessageSquare, Search, GitBranch, Sparkles, Settings,
   Terminal as TerminalIcon, X, Maximize2, Command, FileCode,
   Play, Plus, Layers, FilePlus, FolderPlus, RefreshCw, ChevronRight, Keyboard
 } from 'lucide-react'
@@ -29,7 +29,7 @@ const NAV_ITEMS = [
   { id: 'explorer', icon: Files, label: 'Explorer' },
   { id: 'search',   icon: Search, label: 'Search' },
   { id: 'git',      icon: GitBranch, label: 'Source Control' },
-  { id: 'chat',     icon: Bot, label: 'AI Agent' },
+  { id: 'chat',     icon: 'custom-icon', label: 'Exotic Matter AI' },
   { id: 'extensions', icon: Layers, label: 'Extensions' },
 ] as const
 
@@ -48,12 +48,12 @@ function MenuBar() {
       openFile(fileName) 
     } },
     { label: 'New File...', shortcut: 'Ctrl+Alt+Win+N', onClick: () => triggerCreateFile() },
-    { label: 'New Window', shortcut: 'Ctrl+Shift+N', onClick: () => window.capsicode.windowCreate() },
+    { label: 'New Window', shortcut: 'Ctrl+Shift+N', onClick: () => window.em.windowCreate() },
     {
       label: 'New Window with Profile',
       submenu: [
-        { label: 'Default', onClick: () => window.capsicode.windowCreate() },
-        { label: 'Profile 1', onClick: () => window.capsicode.windowCreate() },
+        { label: 'Default', onClick: () => window.em.windowCreate() },
+        { label: 'Profile 1', onClick: () => window.em.windowCreate() },
       ]
     },
     { separator: true },
@@ -104,44 +104,44 @@ function MenuBar() {
     { label: 'Revert File', disabled: !activeFile, onClick: () => {} },
     { label: 'Close Editor', shortcut: 'Ctrl+F4', disabled: !activeFile, onClick: () => activeFile && closeFile(activeFile) },
     { label: 'Close Folder', shortcut: 'Ctrl+K F', disabled: !state.workspacePath, onClick: () => dispatch({ type: 'SET_WORKSPACE', path: null }) },
-    { label: 'Close Window', shortcut: 'Alt+F4', onClick: () => window.capsicode.windowClose() },
+    { label: 'Close Window', shortcut: 'Alt+F4', onClick: () => window.em.windowClose() },
   ]
 
   const editMenuItems = [
-    { label: 'Undo', shortcut: 'Ctrl+Z', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'undo' } })) },
-    { label: 'Redo', shortcut: 'Ctrl+Y', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'redo' } })) },
+    { label: 'Undo', shortcut: 'Ctrl+Z', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'undo' } })) },
+    { label: 'Redo', shortcut: 'Ctrl+Y', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'redo' } })) },
     { separator: true },
-    { label: 'Cut', shortcut: 'Ctrl+X', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'cut' } })) },
-    { label: 'Copy', shortcut: 'Ctrl+C', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'copy' } })) },
-    { label: 'Paste', shortcut: 'Ctrl+V', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'paste' } })) },
+    { label: 'Cut', shortcut: 'Ctrl+X', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'cut' } })) },
+    { label: 'Copy', shortcut: 'Ctrl+C', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'copy' } })) },
+    { label: 'Paste', shortcut: 'Ctrl+V', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'paste' } })) },
     { separator: true },
-    { label: 'Find', shortcut: 'Ctrl+F', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'find' } })) },
-    { label: 'Replace', shortcut: 'Ctrl+H', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'replace' } })) },
+    { label: 'Find', shortcut: 'Ctrl+F', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'find' } })) },
+    { label: 'Replace', shortcut: 'Ctrl+H', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'replace' } })) },
     { separator: true },
     { label: 'Find in Files', shortcut: 'Ctrl+Shift+F', onClick: () => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'search' }) },
     { label: 'Replace in Files', shortcut: 'Ctrl+Shift+H', onClick: () => dispatch({ type: 'SET_ACTIVE_TAB', tab: 'search' }) },
     { separator: true },
-    { label: 'Toggle Line Comment', shortcut: 'Ctrl+/', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'toggle-line-comment' } })) },
-    { label: 'Toggle Block Comment', shortcut: 'Shift+Alt+A', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'toggle-block-comment' } })) },
+    { label: 'Toggle Line Comment', shortcut: 'Ctrl+/', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'toggle-line-comment' } })) },
+    { label: 'Toggle Block Comment', shortcut: 'Shift+Alt+A', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'toggle-block-comment' } })) },
     { label: 'Emmet: Expand Abbreviation', shortcut: 'Tab', disabled: !activeFile, onClick: () => {} },
   ]
 
   const selectionMenuItems = [
-    { label: 'Select All', shortcut: 'Ctrl+A', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'select-all' } })) },
-    { label: 'Expand Selection', shortcut: 'Shift+Alt+Right', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'expand-selection' } })) },
-    { label: 'Shrink Selection', shortcut: 'Shift+Alt+Left', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'shrink-selection' } })) },
+    { label: 'Select All', shortcut: 'Ctrl+A', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'select-all' } })) },
+    { label: 'Expand Selection', shortcut: 'Shift+Alt+Right', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'expand-selection' } })) },
+    { label: 'Shrink Selection', shortcut: 'Shift+Alt+Left', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'shrink-selection' } })) },
     { separator: true },
-    { label: 'Copy Line Up', shortcut: 'Shift+Alt+Up', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'copy-line-up' } })) },
-    { label: 'Copy Line Down', shortcut: 'Shift+Alt+Down', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'copy-line-down' } })) },
-    { label: 'Move Line Up', shortcut: 'Alt+Up', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'move-line-up' } })) },
-    { label: 'Move Line Down', shortcut: 'Alt+Down', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'move-line-down' } })) },
-    { label: 'Duplicate Selection', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'duplicate-selection' } })) },
+    { label: 'Copy Line Up', shortcut: 'Shift+Alt+Up', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'copy-line-up' } })) },
+    { label: 'Copy Line Down', shortcut: 'Shift+Alt+Down', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'copy-line-down' } })) },
+    { label: 'Move Line Up', shortcut: 'Alt+Up', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'move-line-up' } })) },
+    { label: 'Move Line Down', shortcut: 'Alt+Down', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'move-line-down' } })) },
+    { label: 'Duplicate Selection', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'duplicate-selection' } })) },
     { separator: true },
-    { label: 'Add Cursor Above', shortcut: 'Ctrl+Alt+Up', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'add-cursor-above' } })) },
-    { label: 'Add Cursor Below', shortcut: 'Ctrl+Alt+Down', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'add-cursor-below' } })) },
-    { label: 'Add Cursors to Line Ends', shortcut: 'Shift+Alt+I', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'add-cursors-to-line-ends' } })) },
-    { label: 'Add Next Occurrence', shortcut: 'Ctrl+D', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'add-next-occurrence' } })) },
-    { label: 'Add All Occurrences', shortcut: 'Ctrl+Shift+L', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'add-all-occurrences' } })) },
+    { label: 'Add Cursor Above', shortcut: 'Ctrl+Alt+Up', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'add-cursor-above' } })) },
+    { label: 'Add Cursor Below', shortcut: 'Ctrl+Alt+Down', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'add-cursor-below' } })) },
+    { label: 'Add Cursors to Line Ends', shortcut: 'Shift+Alt+I', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'add-cursors-to-line-ends' } })) },
+    { label: 'Add Next Occurrence', shortcut: 'Ctrl+D', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'add-next-occurrence' } })) },
+    { label: 'Add All Occurrences', shortcut: 'Ctrl+Shift+L', disabled: !activeFile, onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'add-all-occurrences' } })) },
     { separator: true },
     { label: 'Switch to Column Selection Mode', disabled: !activeFile, onClick: () => {} },
   ]
@@ -159,10 +159,10 @@ function MenuBar() {
       { label: 'Status Bar', checked: !state.zenMode, onClick: () => {} },
     ]},
     { label: 'Editor Layout', submenu: [
-      { label: 'Split Up', onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'split-up' } })) },
-      { label: 'Split Down', onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'split-down' } })) },
-      { label: 'Split Left', onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'split-left' } })) },
-      { label: 'Split Right', onClick: () => window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'split-right' } })) },
+      { label: 'Split Up', onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'split-up' } })) },
+      { label: 'Split Down', onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'split-down' } })) },
+      { label: 'Split Left', onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'split-left' } })) },
+      { label: 'Split Right', onClick: () => window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'split-right' } })) },
       { separator: true },
       { label: 'Single', onClick: () => {} },
       { label: 'Two Columns', onClick: () => {} },
@@ -187,7 +187,7 @@ function MenuBar() {
   ]
 
   const terminalMenuItems = [
-    { label: 'New Terminal', shortcut: 'Ctrl+Shift+`', onClick: () => { dispatch({ type: 'SET_TERMINAL_OPEN', open: true }); window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'add-terminal' } })) } },
+    { label: 'New Terminal', shortcut: 'Ctrl+Shift+`', onClick: () => { dispatch({ type: 'SET_TERMINAL_OPEN', open: true }); window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'add-terminal' } })) } },
     { label: 'Split Terminal', shortcut: 'Ctrl+Shift+5', onClick: () => dispatch({ type: 'SET_SPLIT_TERMINAL', split: !state.splitTerminal }) },
   ]
 
@@ -201,10 +201,8 @@ function MenuBar() {
     <div className="h-[30px] bg-[var(--bg-side)] flex items-center px-2 border-b border-[var(--border-main)] select-none drag z-50 flex-shrink-0">
       <div className="flex items-center space-x-3 no-drag shrink-0">
         <div className="flex items-center">
-          <div className="w-4 h-4 bg-blue-500 rounded-sm flex items-center justify-center mr-2 shadow-sm shadow-blue-500/30">
-            <Command size={10} className="text-white" />
-          </div>
-          <span className="text-[11px] font-black text-[var(--text-main)] tracking-tight">CapsiCode</span>
+          <img src="/icon.png" alt="Exotic Matter" className="w-[18px] h-[18px] rounded-[5px] object-cover mr-2 shadow-sm" />
+          <span className="text-[12px] font-bold text-[#f2f2f2] tracking-wide">Exotic Matter</span>
         </div>
         <div className="flex items-center space-x-0.5">
           <MenuBarMenu label="File" items={fileMenuItems} />
@@ -238,13 +236,13 @@ function MenuBar() {
             <span className="text-[10px] font-bold">Run</span>
           </button>
         )}
-        <button onClick={() => window.capsicode.windowMinimize()} className="w-8 h-[30px] flex items-center justify-center hover:bg-[var(--border-main)] transition-colors" title="Minimize">
+        <button onClick={() => window.em.windowMinimize()} className="w-8 h-[30px] flex items-center justify-center hover:bg-[var(--border-main)] transition-colors" title="Minimize">
           <span className="text-[var(--text-muted)] text-lg leading-none mb-1">–</span>
         </button>
-        <button onClick={() => window.capsicode.windowMaximize()} className="w-8 h-[30px] flex items-center justify-center hover:bg-[var(--border-main)] transition-colors" title="Maximize">
+        <button onClick={() => window.em.windowMaximize()} className="w-8 h-[30px] flex items-center justify-center hover:bg-[var(--border-main)] transition-colors" title="Maximize">
           <Maximize2 size={11} className="text-[var(--text-muted)]" />
         </button>
-        <button onClick={() => window.capsicode.windowClose()} className="w-8 h-[30px] flex items-center justify-center hover:bg-red-600 transition-colors group" title="Close">
+        <button onClick={() => window.em.windowClose()} className="w-8 h-[30px] flex items-center justify-center hover:bg-red-600 transition-colors group" title="Close">
           <X size={13} className="text-[var(--text-muted)] group-hover:text-white" />
         </button>
       </div>
@@ -295,7 +293,7 @@ export default function Shell() {
         switch (key) {
           case 'n':
             e.preventDefault()
-            if (isShift) window.capsicode.windowCreate()
+            if (isShift) window.em.windowCreate()
             else {
               const fileName = `Untitled-${Date.now()}.txt`
               openFile(fileName)
@@ -354,8 +352,8 @@ export default function Shell() {
       if (command === 'create-folder') handleCreateFolder()
       if (command === 'add-terminal') addTerminal()
     }
-    window.addEventListener('capsicode-command', handler)
-    return () => window.removeEventListener('capsicode-command', handler)
+    window.addEventListener('em-command', handler)
+    return () => window.removeEventListener('em-command', handler)
   }, [handleCreateFile, handleCreateFolder])
 
   const handleTerminalResizeDrag = useCallback((e: React.MouseEvent) => {
@@ -381,10 +379,10 @@ export default function Shell() {
     if (!name.trim() || !newItemState) { setNewItemState(null); return }
     const fullPath = `${newItemState.parentPath}/${name.trim()}`
     if (newItemState.type === 'file') {
-      await window.capsicode.createFile(fullPath)
+      await window.em.createFile(fullPath)
       openFile(fullPath)
     } else {
-      await window.capsicode.createDirectory(fullPath)
+      await window.em.createDirectory(fullPath)
     }
     setNewItemState(null)
     ;(window as any).refreshExplorer?.()
@@ -444,7 +442,11 @@ export default function Shell() {
                 )}
                 title={item.label}
               >
-                <item.icon size={20} strokeWidth={1.5} className={cn(item.id === 'chat' && chatOpen && 'text-blue-400')} />
+                {item.icon === 'custom-icon' ? (
+                  <img src="/icon.png" alt="Exotic Matter Logo" className={cn("w-5 h-5 rounded-md object-cover transition-all shadow-md shadow-[#6b8cff]/10", chatOpen ? "ring-1 ring-[#6b8cff]/50 scale-105" : "opacity-80 group-hover:opacity-100")} />
+                ) : (
+                  <item.icon size={20} strokeWidth={1.5} />
+                )}
                 {activeTab === item.id && sidebarOpen && item.id !== 'chat' && (
                   <div className="absolute left-0.5 top-2 bottom-2 w-[2px] bg-white rounded-full" />
                 )}
@@ -629,9 +631,6 @@ export default function Shell() {
 
         {!state.zenMode && chatOpen && (
           <div className="w-[380px] bg-[var(--bg-side)] border-l border-[var(--border-main)] flex flex-col flex-shrink-0 animate-in slide-in-from-right duration-150 relative">
-            <button onClick={() => dispatch({ type: 'SET_CHAT_OPEN', open: false })} className="absolute top-2 right-2 z-50 p-1 rounded hover:bg-[var(--border-main)] text-[var(--text-muted)] hover:text-[var(--text-main)] transition-all">
-              <X size={13} />
-            </button>
             <Chat />
           </div>
         )}

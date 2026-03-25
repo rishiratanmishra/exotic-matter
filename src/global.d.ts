@@ -1,7 +1,7 @@
 /// <reference types="vite/client" />
 
 interface Window {
-  capsicode: {
+  em: {
     // App
     getVersion: () => Promise<string>
     getAppPath: () => Promise<string>
@@ -24,6 +24,11 @@ interface Window {
 
     // Search
     searchWorkspace: (rootPath: string, query: string) => Promise<Array<{ path: string; line: number; content: string }>>
+
+    // Agent Actions
+    execCommand: (rootPath: string, command: string) => Promise<{ success: boolean; output: string }>
+    patchFile: (path: string, searchQuery: string, replaceWith: string) => Promise<{ success: boolean; error?: string }>
+
 
     // Terminal
     terminalSpawn: (id: number) => void
@@ -53,6 +58,8 @@ interface Window {
     uninstallExtension: (id: string) => Promise<{ success: boolean }>
     searchMarketplace: (query: string) => Promise<any>
     installExtension: (id: string, version: string) => Promise<{ success: boolean, error?: string }>
+  getExtensionCommands: () => Promise<{id: string}[]>
+  executeExtensionCommand: (commandId: string, args: any[]) => Promise<any>
     getExtensionDetails: (id: string) => Promise<any>
     getExternalImage: (url: string) => Promise<string | null>
   }

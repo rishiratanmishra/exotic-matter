@@ -76,23 +76,23 @@ export default function Terminal({ id, isActive }: TerminalProps) {
     fitAddonRef.current = fitAddon
 
     // Spawn the PTY with this specific ID
-    window.capsicode.terminalSpawn(terminalId)
+    window.em.terminalSpawn(terminalId)
 
     // Wire data from PTY → xterm
-    const removeListener = window.capsicode.onTerminalData(terminalId, data => {
+    const removeListener = window.em.onTerminalData(terminalId, data => {
       term.write(data)
     })
 
     // Wire keystrokes from xterm → PTY
     term.onData(data => {
-      window.capsicode.terminalWrite(terminalId, data)
+      window.em.terminalWrite(terminalId, data)
     })
 
     const handleResize = () => {
       try {
         if (containerRef.current && containerRef.current.clientWidth > 0) {
           fitAddon.fit()
-          window.capsicode.terminalResize(terminalId, term.cols, term.rows)
+          window.em.terminalResize(terminalId, term.cols, term.rows)
         }
       } catch (err) {
         console.warn('Terminal resize failed:', err)
@@ -108,7 +108,7 @@ export default function Terminal({ id, isActive }: TerminalProps) {
       resizeObserver.disconnect()
       removeListener()
       // Kill the PTY process to prevent memory leak
-      window.capsicode.terminalKill(terminalId).catch(() => {})
+      window.em.terminalKill(terminalId).catch(() => {})
       term.dispose()
     }
   }, [terminalId, state.theme]) // Re-run when terminal ID or theme changes

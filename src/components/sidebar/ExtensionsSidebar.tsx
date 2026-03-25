@@ -22,7 +22,7 @@ export default function ExtensionsSidebar() {
       }
       setIsSearching(true)
       try {
-        const data = await window.capsicode.searchMarketplace(search)
+        const data = await window.em.searchMarketplace(search)
         setResults(data.extensions || [])
       } catch (e) {
         console.error('Open VSX search failed', e)
@@ -150,7 +150,7 @@ function ExtensionItem({ extension }: { extension: any }) {
            <button 
              className="p-1.5 hover:bg-red-500/10 text-red-400/80 hover:text-red-400 rounded-md transition-all shadow-sm"
              title="Uninstall"
-             onClick={(e) => { e.stopPropagation(); window.capsicode.uninstallExtension(id) }}
+             onClick={(e) => { e.stopPropagation(); window.em.uninstallExtension(id) }}
            >
              <Trash2 size={13} />
            </button>
@@ -198,12 +198,12 @@ function MarketplaceItem({ extension }: { extension: any }) {
       if (!url) {
         url = `https://open-vsx.org/api/${namespace}/${name}/${version}/file/extension/icon.png`
       }
-      const res = await window.capsicode.getExternalImage(url)
+      const res = await window.em.getExternalImage(url)
       if (res) setProxiedIcon(res)
       else {
           // One more try with another common path
           const fallbackUrl = `https://open-vsx.org/api/${namespace}/${name}/${version}/file/icon.png`
-          const res2 = await window.capsicode.getExternalImage(fallbackUrl)
+          const res2 = await window.em.getExternalImage(fallbackUrl)
           setProxiedIcon(res2)
       }
     }
@@ -214,7 +214,7 @@ function MarketplaceItem({ extension }: { extension: any }) {
     e.stopPropagation()
     setIsInstalling(true)
     try {
-      const res = await window.capsicode.installExtension(id, version)
+      const res = await window.em.installExtension(id, version)
       if (res.success) {
         await refreshExtensions()
       } else {

@@ -39,12 +39,14 @@ function createWindow() {
     height: 900,
     minWidth: 800,
     minHeight: 600,
+    icon: join(__dirname, '../public/icon.png'),
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
       sandbox: false, // required for preload
     },
+    frame: false,
     titleBarStyle: 'hidden',
     trafficLightPosition: { x: 10, y: 10 },
     show: false,
@@ -135,8 +137,8 @@ ipcMain.handle('list-extensions', async () => {
     // Add some built-in mock extensions if folder is empty for demonstration
     if (extensions.length === 0) {
       return [
-        { id: 'cc.theme.tokyo-night', name: 'Tokyo Night', version: '1.0.0', description: 'A clean, dark theme for CapsiCode.', author: 'Enki', enabled: true, builtIn: true },
-        { id: 'cc.lang.python', name: 'Python Support', version: '2.4.1', description: 'Rich IntelliSense and linting for Python.', author: 'CapsiCode Team', enabled: true, builtIn: true },
+        { id: 'cc.theme.tokyo-night', name: 'Tokyo Night', version: '1.0.0', description: 'A clean, dark theme for Exotic Matter.', author: 'Enki', enabled: true, builtIn: true },
+        { id: 'cc.lang.python', name: 'Python Support', version: '2.4.1', description: 'Rich IntelliSense and linting for Python.', author: 'Exotic Matter Team', enabled: true, builtIn: true },
         { id: 'cc.util.git-lens', name: 'GitLens Lite', version: '0.8.0', description: 'Visual git history and line blame.', author: 'Community', enabled: false, builtIn: true },
       ]
     }
@@ -236,7 +238,7 @@ ipcMain.handle('get-external-image', async (_event, url: string) => {
     const response = await axios.get(url, { 
       responseType: 'arraybuffer',
       timeout: 5000,
-      headers: { 'User-Agent': 'CapsiCode IDE' }
+      headers: { 'User-Agent': 'Exotic Matter IDE' }
     })
     const base64 = Buffer.from(response.data, 'binary').toString('base64')
     const contentType = response.headers['content-type'] || 'image/png'
@@ -455,6 +457,44 @@ ipcMain.handle('search-workspace', async (_event, rootPath: string, query: strin
   }
 })
 
+// ─── IPC: Agent Actions ────────────────────────────────────────────────────────
+const { exec } = require('child_process')
+ipcMain.handle('execute-command', async (_event, rootPath: string, command: string) => {
+  return new Promise((resolve) => {
+    exec(command, { cwd: rootPath, maxBuffer: 10 * 1024 * 1024, timeout: 30000 }, (error: any, stdout: string, stderr: string) => {
+      let output = stdout + (stderr ? '\n[STDERR]:\n' + stderr : '')
+      if (error) {
+        output += `\n[ERROR]: ${error.message}`
+      }
+      resolve({ success: !error, output: output.trim() || '(No output)' })
+    })
+  })
+})
+
+ipcMain.handle('patch-file', async (_event, filePath: string, searchQuery: string, replaceWith: string) => {
+  try {
+    assertSafePath(filePath)
+    const content = await readFile(filePath, 'utf-8')
+    
+    // Exact string replacement for safety
+    if (!content.includes(searchQuery)) {
+      return { success: false, error: 'Target code block not found in file.' }
+    }
+    
+    const count = content.split(searchQuery).length - 1
+    if (count > 1) {
+      return { success: false, error: 'Target code block matches multiple times. Be more specific.' }
+    }
+    
+    const newContent = content.replace(searchQuery, replaceWith)
+    await writeFile(filePath, newContent, 'utf-8')
+    return { success: true }
+  } catch (err: any) {
+    return { success: false, error: err.message }
+  }
+})
+
+
 // ─── IPC: Terminal PTY ────────────────────────────────────────────────────────
 const ptys: Map<number, pty.IPty> = new Map()
 
@@ -541,6 +581,20 @@ ipcMain.handle('git-commit', async (_event, rootPath: string, message: string) =
 })
 
 // ─── IPC: AI / Ollama ─────────────────────────────────────────────────────────
+import { CommandRegistry } from './core/CommandRegistry'
+
+ipcMain.handle('get-extension-commands', () => {
+  return CommandRegistry.getAllExportedCommands()
+})
+
+ipcMain.handle('execute-extension-command', async (_event, commandId: string, args: any[]) => {
+  try {
+    return await CommandRegistry.executeCommand(commandId, ...args)
+  } catch (err: any) {
+    return { error: err.message }
+  }
+})
+
 ipcMain.handle('get-models', async () => {
   try {
     const response = await fetch('http://127.0.0.1:11434/api/tags')

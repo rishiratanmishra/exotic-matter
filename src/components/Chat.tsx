@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
-import { Send, User, Bot, Loader2, Sparkles, Plus, History, Layers, X, AtSign, Check, Copy } from 'lucide-react'
+import { Send, User, Bot, Loader2, Plus, History, Layers, X, AtSign, Check, Copy, ChevronRight, Settings, Image, PenTool, Mic, ArrowRight, ChevronDown } from 'lucide-react'
 import { AgentExecutor, PROPOSAL_DELIM } from '../services/agent/executor'
 import { OllamaService } from '../services/ollama'
 import DiffViewer from './DiffViewer'
@@ -7,30 +7,27 @@ import { useIDE } from '../context/IDEContext'
 
 function cn(...c: any[]) { return c.filter(Boolean).join(' ') }
 
-interface Message { role: 'user' | 'assistant'; content: string }
+interface Message { role: 'user' | 'assistant' | 'system'; content: string }
 
 const AGENT_EXECUTOR = new AgentExecutor()
 
 export default function Chat() {
-  const { state } = useIDE()
+  const { state, dispatch } = useIDE()
   const { workspacePath, activeFile, allFiles } = state
 
-  // Keep executor context in sync with IDE state
   useEffect(() => {
     AGENT_EXECUTOR.updateContext({ workspacePath, activeFile, allFiles })
   }, [workspacePath, activeFile, allFiles])
 
-  const [sessionId, setSessionId] = useState<string>(() =>
-    localStorage.getItem('capsicode_active_session') || Date.now().toString()
-  )
+  const [sessionId, setSessionId] = useState<string>(() => localStorage.getItem('em_active_session') || Date.now().toString())
   const [sessions, setSessions] = useState<any[]>(() => {
-    try { return JSON.parse(localStorage.getItem('capsicode_chat_sessions') || '[]') } catch { return [] }
+    try { return JSON.parse(localStorage.getItem('em_chat_sessions') || '[]') } catch { return [] }
   })
   const [messages, setMessages] = useState<Message[]>(() => {
     try {
-      const saved = localStorage.getItem(`capsicode_chat_${sessionId}`)
-      return saved ? JSON.parse(saved) : [{ role: 'assistant', content: 'I\'m CapsiCode AI. Ask me anything about your code.' }]
-    } catch { return [{ role: 'assistant', content: 'I\'m CapsiCode AI. Ask me anything about your code.' }] }
+      const saved = localStorage.getItem(`em_chat_${sessionId}`)
+      return saved ? JSON.parse(saved) : [{ role: 'assistant', content: 'I\'m Exotic Matter AI. Ask me anything about your code.' }]
+    } catch { return [{ role: 'assistant', content: 'I\'m Exotic Matter AI. Ask me anything about your code.' }] }
   })
   const [input, setInput] = useState('')
   const [isThinking, setIsThinking] = useState(false)
@@ -40,6 +37,7 @@ export default function Chat() {
   const [agentStatus, setAgentStatus] = useState<string | null>(null)
   const [showHistory, setShowHistory] = useState(false)
   const [showModels, setShowModels] = useState(false)
+  const [showAddContext, setShowAddContext] = useState(false)
   const [atMentionQuery, setAtMentionQuery] = useState('')
   const [showAtMention, setShowAtMention] = useState(false)
   const isThinkingRef = useRef(false)
@@ -47,7 +45,7 @@ export default function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    window.capsicode.getModels().then((list: any[]) => {
+    window.em.getModels().then((list: any[]) => {
       setModels(list)
       if (list.length > 0 && !selectedModel) {
         setSelectedModel(list[0].name)
@@ -56,20 +54,19 @@ export default function Chat() {
     })
   }, [])
 
-  // Persist messages
   useEffect(() => {
-    localStorage.setItem(`capsicode_chat_${sessionId}`, JSON.stringify(messages))
-    localStorage.setItem('capsicode_active_session', sessionId)
+    localStorage.setItem(`em_chat_${sessionId}`, JSON.stringify(messages))
+    localStorage.setItem('em_active_session', sessionId)
     AGENT_EXECUTOR.setHistory(messages)
 
     if (messages.length > 1) {
       const exists = sessions.find(s => s.id === sessionId)
       if (!exists) {
-        const firstUserMsg = messages.find(m => m.role === 'user')
+        const firstUserMsg = messages.find(m => m.role === 'user' && !m.content.startsWith('[Tool result'))
         const title = firstUserMsg?.content.slice(0, 40) ?? 'New Chat'
         const updated = [{ id: sessionId, title, timestamp: Date.now() }, ...sessions].slice(0, 30)
         setSessions(updated)
-        localStorage.setItem('capsicode_chat_sessions', JSON.stringify(updated))
+        localStorage.setItem('em_chat_sessions', JSON.stringify(updated))
       }
     }
   }, [messages, sessionId])
@@ -80,15 +77,15 @@ export default function Chat() {
 
   const newSession = () => {
     setSessionId(Date.now().toString())
-    setMessages([{ role: 'assistant', content: 'I\'m CapsiCode AI. Ask me anything about your code.' }])
+    setMessages([{ role: 'assistant', content: 'I\'m Exotic Matter AI. Ask me anything about your code.' }])
     setShowHistory(false)
   }
 
   const loadSession = (id: string) => {
     try {
-      const saved = localStorage.getItem(`capsicode_chat_${id}`)
+      const saved = localStorage.getItem(`em_chat_${id}`)
       if (saved) { setMessages(JSON.parse(saved)); setSessionId(id) }
-    } catch {}
+    } catch { }
     setShowHistory(false)
   }
 
@@ -96,8 +93,8 @@ export default function Chat() {
     e.stopPropagation()
     const updated = sessions.filter(s => s.id !== id)
     setSessions(updated)
-    localStorage.setItem('capsicode_chat_sessions', JSON.stringify(updated))
-    localStorage.removeItem(`capsicode_chat_${id}`)
+    localStorage.setItem('em_chat_sessions', JSON.stringify(updated))
+    localStorage.removeItem(`em_chat_${id}`)
     if (sessionId === id) newSession()
   }
 
@@ -144,20 +141,17 @@ export default function Chat() {
   }, [input])
 
   const handleApplyEdit = async (path: string, content: string) => {
-    setAgentStatus(`Applying changes to ${path.split(/[/\\]/).pop()}...`)
-    await window.capsicode.writeFile(path, content)
+    setAgentStatus(`Applying changes...`)
+    await window.em.writeFile(path, content)
     setAgentStatus('Changes applied!')
     setTimeout(() => setAgentStatus(null), 2000)
   }
 
-  // Parse PROPOSAL blocks using safe delimiter
   const renderMessageContent = (content: string) => {
     const MARKER_START = 'PROPOSAL_START'
     const MARKER_END = 'PROPOSAL_END'
 
-    if (!content.includes(MARKER_START)) {
-      return <MessageBody content={content} />
-    }
+    if (!content.includes(MARKER_START)) return <MessageBody content={content} />
 
     const parts: React.ReactNode[] = []
     let cursor = 0
@@ -169,9 +163,7 @@ export default function Chat() {
         break
       }
 
-      if (startIdx > cursor) {
-        parts.push(<MessageBody key={`text-${cursor}`} content={content.slice(cursor, startIdx)} />)
-      }
+      if (startIdx > cursor) parts.push(<MessageBody key={`text-${cursor}`} content={content.slice(cursor, startIdx)} />)
 
       const endIdx = content.indexOf(MARKER_END, startIdx)
       if (endIdx === -1) {
@@ -187,28 +179,17 @@ export default function Chat() {
         const newVal = delimParts[2]
         const explanation = delimParts[3]?.trim() ?? ''
         parts.push(
-          <div key={`proposal-${startIdx}`} className="my-3">
-            {explanation && (
-              <p className="text-[11px] text-[#a1a1a8] mb-2 italic">{explanation}</p>
-            )}
-            <DiffViewer
-              path={path}
-              oldValue={oldVal}
-              newValue={newVal}
-              onApply={() => handleApplyEdit(path, newVal)}
-              onReject={() => {}}
-            />
+          <div key={`proposal-${startIdx}`} className="my-4 rounded-xl overflow-hidden border border-[var(--border-main)] shadow-lg hover:shadow-xl transition-shadow">
+            {explanation && <div className="bg-[var(--bg-side)] p-3 text-[12px] text-[var(--text-main)] italic border-b border-[var(--border-main)]">{explanation}</div>}
+            <DiffViewer path={path} oldValue={oldVal} newValue={newVal} onApply={() => handleApplyEdit(path, newVal)} onReject={() => { }} />
           </div>
         )
       }
-
       cursor = endIdx + MARKER_END.length
     }
-
     return <>{parts}</>
   }
 
-  // Handle @file mention in textarea
   const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const val = e.target.value
     setInput(val)
@@ -241,211 +222,243 @@ export default function Chat() {
     .filter(f => f.toLowerCase().includes(atMentionQuery.toLowerCase()))
     .slice(0, 8)
 
+  const activeSession = sessions.find(s => s.id === sessionId)
+  const displayTitle = activeSession && activeSession.title && activeSession.title !== 'New Chat'
+    ? activeSession.title
+    : 'Exotic Matter AI'
+
   return (
-    <div className="flex flex-col h-full bg-[var(--bg-side)] relative overflow-hidden font-outfit">
-      {/* Header */}
-      <div className="h-[35px] px-4 border-b border-[var(--border-main)] flex items-center justify-between bg-[var(--bg-side)] flex-shrink-0">
-        <div className="flex items-center space-x-2">
-          <Sparkles size={13} className="text-blue-400" />
-          <span className="text-[10px] uppercase tracking-[0.15em] font-black text-[var(--text-muted)]">CapsiCode AI</span>
+    <div className="flex flex-col h-full bg-[var(--bg-main)] relative overflow-hidden font-outfit text-[var(--text-main)]">
+      {/* Premium Header */}
+      <div className="h-[60px] px-5 border-b border-[var(--border-main)]/50 flex items-center justify-between bg-[var(--bg-main)]/80 backdrop-blur-md z-40 flex-shrink-0">
+        <div className="flex items-center space-x-3.5 min-w-0 pr-2">
+          <span className="text-[15px] text-[#f2f2f2] font-medium tracking-wide truncate">{displayTitle}</span>
         </div>
-        <div className="flex items-center space-x-1 pr-6">
-          {agentStatus && (
-            <span className="text-[9px] text-[#484850] italic mr-2 animate-pulse">{agentStatus}</span>
-          )}
-          <button onClick={() => setShowHistory(!showHistory)} className={cn('p-1.5 rounded transition-all hover:bg-[var(--border-main)]', showHistory ? 'text-blue-400' : 'text-[var(--text-muted)] hover:text-[var(--text-main)]')} title="History">
-            <History size={13} />
-          </button>
-          <button onClick={newSession} className="p-1.5 rounded text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border-main)] transition-all" title="New Chat">
-            <Plus size={13} />
-          </button>
+        <div className="flex items-center space-x-0.5 flex-shrink-0">
+          {agentStatus && <span className="text-[10px] text-[#6b8cff] italic mr-2 animate-pulse font-medium px-2 py-0.5 bg-[#6b8cff]/10 rounded-full">{agentStatus}</span>}
+          <button onClick={() => setShowHistory(!showHistory)} className={cn('p-1.5 rounded-lg flex items-center justify-center transition-all', showHistory ? 'bg-[#6b8cff]/10 text-[#6b8cff]' : 'text-[#525252] hover:text-[#d4d4d4] hover:bg-[#2b2b2b]')} title="History"><History size={15} strokeWidth={1.5} /></button>
+          <button onClick={newSession} className="p-1.5 rounded-lg flex items-center justify-center text-[#525252] hover:text-[#d4d4d4] hover:bg-[#2b2b2b] transition-all" title="New Chat"><Plus size={16} strokeWidth={1.5} /></button>
+          <button onClick={() => dispatch({ type: 'SET_CHAT_OPEN', open: false })} className="p-1.5 rounded-lg flex items-center justify-center text-[#525252] hover:text-[#d4d4d4] hover:bg-[#2b2b2b] transition-all ml-0.5" title="Close"><X size={16} strokeWidth={1.5} /></button>
         </div>
       </div>
 
-      {/* History overlay */}
+      {/* History Layer */}
       {showHistory && (
-        <div className="absolute inset-x-0 top-[35px] bottom-0 bg-[var(--bg-main)]/96 backdrop-blur-xl z-[100] flex flex-col">
-          <div className="p-4 flex-1 overflow-y-auto space-y-2">
-            <div className="flex items-center justify-between mb-3">
-              <h3 className="text-[9px] uppercase font-black text-[var(--text-muted)] tracking-[0.18em]">Recent Chats</h3>
-              <button onClick={() => setShowHistory(false)} className="text-[var(--text-muted)] hover:text-[var(--text-main)]"><X size={13} /></button>
+        <div className="absolute inset-x-0 top-[60px] bottom-0 bg-[var(--bg-main)]/95 backdrop-blur-3xl z-[100] flex flex-col animate-in fade-in slide-in-from-top-4 duration-300">
+          <div className="p-5 flex-1 overflow-y-auto space-y-2">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-[10px] uppercase font-black text-[var(--text-muted)] tracking-[0.2em]">Chat History</h3>
             </div>
             {sessions.map(s => (
-              <div key={s.id} onClick={() => loadSession(s.id)}
-                className={cn('p-3 rounded-lg border cursor-pointer transition-all flex items-center justify-between group',
-                  sessionId === s.id ? 'bg-blue-500/10 border-blue-500/30' : 'bg-[var(--bg-explorer)] border-[var(--border-main)] hover:border-[var(--text-muted)]'
-                )}>
+              <div key={s.id} onClick={() => loadSession(s.id)} className={cn('p-3.5 rounded-xl border cursor-pointer transition-all flex items-center justify-between group', sessionId === s.id ? 'bg-blue-500/10 border-blue-500/30 shadow-lg shadow-blue-500/5' : 'bg-[var(--bg-side)] border-[var(--border-main)] hover:border-[var(--text-muted)]')}>
                 <div className="flex-1 min-w-0 pr-2">
-                  <div className={cn('text-[12px] truncate', sessionId === s.id ? 'text-white font-bold' : 'text-[var(--text-main)]')}>{s.title}</div>
-                  <div className="text-[9px] text-[var(--text-muted)] mt-0.5">{new Date(s.timestamp).toLocaleDateString()}</div>
+                  <div className={cn('text-[13px] truncate', sessionId === s.id ? 'text-white font-bold' : 'text-[var(--text-main)]')}>{s.title}</div>
+                  <div className="text-[10px] text-[var(--text-muted)] mt-1 font-medium">{new Date(s.timestamp).toLocaleDateString()}</div>
                 </div>
-                <button onClick={e => deleteSession(s.id, e)} className="opacity-0 group-hover:opacity-100 p-1.5 text-[var(--text-muted)] hover:text-red-400 transition-all">
-                  <X size={12} />
-                </button>
+                <button onClick={e => deleteSession(s.id, e)} className="opacity-0 group-hover:opacity-100 p-2 rounded-md bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white transition-all"><X size={12} /></button>
               </div>
             ))}
-            {sessions.length === 0 && (
-              <div className="text-center py-16 text-[var(--text-muted)] text-sm">No history</div>
-            )}
           </div>
         </div>
       )}
 
-      {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 space-y-6 no-scrollbar bg-[var(--bg-main)]">
-        {messages.filter(m => (m.role as string) !== 'system').map((msg, i) => (
-          <div key={i} className={`flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'} animate-in fade-in slide-in-from-bottom-1`}>
-            <div className={`flex items-center mb-1.5 text-[8px] font-black uppercase tracking-[0.12em] text-[var(--text-muted)] ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
-              {msg.role === 'user' ? <User size={11} className="ml-1.5" /> : <Bot size={11} className="mr-1.5 text-blue-400/60" />}
-              <span className="mx-1">{msg.role}</span>
-            </div>
-            <div className={cn(
-              'max-w-[93%] p-3.5 rounded-2xl text-[12.5px] leading-relaxed',
-              msg.role === 'user'
-                ? 'bg-blue-600 text-white rounded-tr-sm shadow-sm'
-                : 'bg-[var(--bg-explorer)] text-[var(--text-main)] border border-[var(--border-main)] rounded-tl-sm'
-            )}>
-              {msg.role === 'assistant' ? renderMessageContent(msg.content) : (
-                <div className="whitespace-pre-wrap">{msg.content}</div>
-              )}
-              {msg.role === 'assistant' && msg.content.includes('PLAN:') && (
-                <div className="mt-3 pt-3 border-t border-[#27272a] flex justify-end">
-                  <button onClick={() => handleSend('Approved. Please proceed with the plan.')}
-                    className="bg-white text-black text-[10px] font-black px-3 py-1.5 rounded-lg flex items-center space-x-1.5 hover:bg-white/90 active:scale-95 transition-all">
-                    <Sparkles size={10} /><span>Approve & Run</span>
+      {!showHistory && (
+        <>
+          {/* Messages */}
+          <div ref={scrollRef} className="flex-1 overflow-y-auto px-5 pt-6 pb-40 space-y-6 no-scrollbar">
+            {messages.filter(m => m.role !== 'system').map((msg, i) => {
+              // Tool Call Rendering
+              if (msg.role === 'user' && msg.content.startsWith('[Tool result for')) {
+                const toolNameMatch = msg.content.match(/\[Tool result for (.*?)\]/)
+                const toolName = toolNameMatch ? toolNameMatch[1] : 'Tool'
+                const resultCode = msg.content.replace(`[Tool result for ${toolName}]\n`, '')
+                return (
+                  <div key={i} className="flex flex-col items-start max-w-[90%] animate-in fade-in">
+                    <details className="group border border-[var(--border-main)] bg-[var(--bg-side)]/50 rounded-xl overflow-hidden backdrop-blur-sm cursor-pointer w-full text-left">
+                      <summary className="flex items-center space-x-2 px-3 py-2 text-[11px] font-medium text-[var(--text-muted)] hover:text-[var(--text-main)] transition-colors select-none list-none outline-none">
+                        <Settings size={12} className="text-emerald-500/70" />
+                        <span>System Executed <span className="font-mono text-[10px] bg-black/20 px-1.5 py-0.5 ml-1 rounded text-[var(--text-main)]">{toolName}</span></span>
+                        <ChevronRight size={12} className="ml-auto transform group-open:rotate-90 transition-transform" />
+                      </summary>
+                      <div className="border-t border-[var(--border-main)] p-3 bg-black/20 overflow-x-auto max-h-[300px]">
+                        <pre className="text-[11px] text-[#A1A1AA] font-mono whitespace-pre-wrap">{resultCode || "Success"}</pre>
+                      </div>
+                    </details>
+                  </div>
+                )
+              }
+
+              const isUser = msg.role === 'user'
+              return (
+                <div key={i} className={cn('flex flex-col animate-in fade-in slide-in-from-bottom-2', isUser ? 'items-end' : 'items-start')}>
+                  <div className="flex space-x-3 w-full max-w-full text-left">
+                    <div className={cn('flex-1 min-w-0', isUser ? 'flex justify-end' : '')}>
+                      <div className={cn(
+                        'inline-block max-w-[90%] px-4 py-3 border border-[var(--border-main)] text-[13.5px] leading-relaxed break-words',
+                        isUser ? 'bg-[var(--bg-side)] text-[var(--text-main)] rounded-2xl rounded-tr-md shadow-sm' : 'text-[var(--text-main)] rounded-2xl rounded-tl-sm border-transparent'
+                      )}>
+                        {isUser ? <div className="whitespace-pre-wrap">{msg.content}</div> : renderMessageContent(msg.content)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )
+            })}
+            {isThinking && (
+              <div className="flex space-x-3 w-full animate-in fade-in">
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500/20 to-purple-600/20 border border-blue-500/30 flex items-center justify-center flex-shrink-0 shadow-[0_0_15px_rgba(59,130,246,0.15)]">
+                  <Loader2 size={13} className="text-blue-400 animate-spin" />
+                </div>
+                <div className="bg-[var(--bg-side)]/50 border border-[var(--border-main)] px-4 py-2.5 rounded-2xl rounded-tl-sm flex items-center space-x-2">
+                  <span className="text-[12.5px] text-[var(--text-muted)] italic font-medium tracking-wide">{agentStatus ?? 'Processing...'}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Antigravity Input Area */}
+          <div className="absolute bottom-5 left-5 right-5 z-50">
+            {/* @file mention popup */}
+            {showAtMention && filteredAtFiles.length > 0 && (
+              <div className="absolute bottom-[calc(100%+12px)] left-0 w-[280px] bg-[#1e1e1e] border border-[#2b2b2b] rounded-xl overflow-hidden shadow-2xl z-50">
+                <div className="px-3 py-2 text-[10px] text-[var(--text-muted)] font-black uppercase tracking-widest border-b border-[#2b2b2b]">Mention a file</div>
+                <div className="max-h-[220px] overflow-y-auto no-scrollbar py-1.5">
+                  {filteredAtFiles.map(f => (
+                    <button key={f} onClick={() => insertAtMention(f)} className="w-full text-left px-3 py-2 text-[12.5px] text-[#cccccc] hover:bg-[#2b2b2b] hover:text-white transition-colors flex items-center space-x-2 group">
+                      <AtSign size={13} className="text-[#888888] group-hover:text-white flex-shrink-0 transition-colors" />
+                      <span className="truncate">{f.split(/[/\\]/).pop()}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* The Input Pill */}
+            <div className="bg-[#1e1e1e] rounded-2xl border border-[#2b2b2b] shadow-2xl focus-within:border-[#4d4d4d] transition-all flex flex-col relative text-white">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={handleInputChange}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
+                  if (e.key === 'Escape') setShowAtMention(false)
+                }}
+                placeholder="Ask anything, @ to mention, / for workflows"
+                rows={1}
+                className="w-full bg-transparent border-0 ring-0 focus:ring-0 focus:outline-none text-[#e8e8e8] text-[14px] px-4 py-4 resize-none min-h-[56px] max-h-[200px] no-scrollbar placeholder:text-[#525252]"
+                style={{ fieldSizing: 'content' } as any}
+                disabled={isThinking}
+              />
+
+              <div className="flex items-center justify-between px-3 pb-3 pt-1">
+                <div className="flex items-center space-x-2 ml-1">
+                  {/* Add Context Button */}
+                  <div className="relative">
+                    <button onClick={() => setShowAddContext(!showAddContext)} className="w-[30px] h-[30px] rounded-full bg-[#303030] hover:bg-[#404040] flex items-center justify-center transition-colors text-[#a3a3a3] hover:text-[#d4d4d4]">
+                      <Plus size={16} />
+                    </button>
+                    {showAddContext && (
+                      <>
+                        <div className="fixed inset-0 z-[190]" onClick={() => setShowAddContext(false)} />
+                        <div className="absolute bottom-[calc(100%+12px)] left-0 min-w-[180px] bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl shadow-[0_20px_50px_rgba(0,0,0,0.5)] overflow-hidden z-[200] animate-in fade-in slide-in-from-bottom-2">
+                          <div className="px-4 py-3 border-b border-[#2b2b2b]">
+                            <span className="text-[12.5px] text-[#a3a3a3]">Add context</span>
+                          </div>
+                          <div className="py-1.5 flex flex-col">
+                            <button className="flex items-center space-x-3 px-4 py-2 hover:bg-[#303030] text-[13.5px] text-[#e8e8e8] transition-colors">
+                              <Image size={15} className="text-[#a3a3a3]" />
+                              <span>Media</span>
+                            </button>
+                            <button onClick={() => { setInput(prev => prev + '@'); setShowAddContext(false); textareaRef.current?.focus() }} className="flex items-center space-x-3 px-4 py-2 hover:bg-[#303030] text-[13.5px] text-[#e8e8e8] transition-colors">
+                              <AtSign size={15} className="text-[#a3a3a3]" />
+                              <span>Mentions</span>
+                            </button>
+                            <button className="flex items-center space-x-3 px-4 py-2 hover:bg-[#303030] text-[13.5px] text-[#e8e8e8] transition-colors">
+                              <PenTool size={15} className="text-[#a3a3a3]" />
+                              <span>Workflows</span>
+                            </button>
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  {/* Mode Select */}
+                  <button onClick={() => setMode(m => m === 'fast' ? 'planning' : 'fast')} className={cn('flex items-center space-x-1.5 text-[13px] px-2 py-1.5 rounded-lg transition-colors', mode === 'planning' ? 'text-white bg-[#303030]' : 'text-[#a3a3a3] hover:text-[#d4d4d4] hover:bg-[#303030]')}>
+                    <span className="capitalize">{mode}</span>
+                    <ChevronDown size={14} className="ml-0.5" />
+                  </button>
+
+                  {/* Model Select */}
+                  <div className="relative">
+                    <button onClick={() => setShowModels(!showModels)} className="flex items-center space-x-1.5 text-[13px] px-2 py-1.5 rounded-lg text-[#a3a3a3] hover:text-[#d4d4d4] hover:bg-[#303030] transition-colors max-w-[150px]">
+                      <span className="truncate">{selectedModel || 'Model'}</span>
+                      <ChevronDown size={14} className="flex-shrink-0" />
+                    </button>
+                    {showModels && (
+                      <>
+                        <div className="fixed inset-0 z-[190]" onClick={() => setShowModels(false)} />
+                        <div className="absolute bottom-[calc(100%+12px)] left-0 min-w-[220px] bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl shadow-2xl overflow-hidden z-[200] animate-in fade-in slide-in-from-bottom-2">
+                          <div className="py-1.5">
+                            {models.length > 0 ? models.map(m => (
+                              <button key={m.name} onClick={() => { setSelectedModel(m.name); OllamaService.setModel(m.name); setShowModels(false) }} className={cn('w-full text-left px-4 py-2.5 text-[13px] hover:bg-[#303030] transition-colors flex items-center space-x-2.5', selectedModel === m.name ? 'text-white' : 'text-[#a3a3a3]')}>
+                                <span className="truncate">{m.name}</span>
+                              </button>
+                            )) : (
+                              <div className="px-4 py-4 text-[12px] text-[#525252] text-center">No models detected</div>
+                            )}
+                          </div>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Controls */}
+                <div className="flex items-center space-x-2 pr-1">
+                  <button className="w-[30px] h-[30px] flex items-center justify-center text-[#a3a3a3] hover:text-white transition-colors">
+                    <Mic size={18} />
+                  </button>
+                  <button onClick={() => handleSend()} disabled={isThinking || !input.trim()} className={cn('w-[32px] h-[32px] rounded-full flex items-center justify-center transition-all duration-200', isThinking || !input.trim() ? 'bg-[#303030] text-[#737373] cursor-not-allowed' : 'bg-[#404040] text-white hover:bg-[#505050] active:scale-95')}>
+                    {isThinking ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} strokeWidth={2.5} />}
                   </button>
                 </div>
-              )}
-            </div>
-          </div>
-        ))}
-        {isThinking && (
-          <div className="flex flex-col items-start">
-            <div className="flex items-center mb-1.5 text-[8px] font-black uppercase text-[#343440]">
-              <Bot size={11} className="mr-1.5 text-blue-400/60" /> assistant
-            </div>
-            <div className="bg-[var(--bg-explorer)] border border-[var(--border-main)] p-3.5 rounded-2xl rounded-tl-sm flex items-center space-x-2">
-              <Loader2 size={13} className="animate-spin text-blue-500 flex-shrink-0" />
-              <span className="text-[12px] text-[var(--text-muted)] italic">{agentStatus ?? 'Thinking...'}</span>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Input area */}
-      <div className="p-3 bg-[var(--bg-side)] border-t border-[var(--border-main)] relative">
-        {/* @file mention dropdown */}
-        {showAtMention && filteredAtFiles.length > 0 && (
-          <div className="absolute bottom-full left-3 right-3 mb-1 bg-[var(--bg-explorer)] border border-[var(--border-main)] rounded-xl overflow-hidden shadow-[0_-8px_30px_rgba(0,0,0,0.5)] z-50 max-h-[180px] overflow-y-auto">
-            <div className="px-3 py-1.5 text-[9px] text-[var(--text-muted)] font-black uppercase tracking-widest border-b border-[var(--border-main)]">Mention a file</div>
-            {filteredAtFiles.map(f => (
-              <button key={f} onClick={() => insertAtMention(f)}
-                className="w-full text-left px-3 py-2 text-[11px] text-[var(--text-main)]/80 hover:bg-[var(--border-main)] hover:text-[var(--text-main)] transition-colors flex items-center space-x-2">
-                <AtSign size={10} className="text-blue-400 flex-shrink-0" />
-                <span className="truncate">{f.split(/[/\\]/).pop()}</span>
-                <span className="text-[9px] text-[var(--text-muted)] truncate ml-auto">{f}</span>
-              </button>
-            ))}
-          </div>
-        )}
-
-        <div className="bg-[var(--bg-main)] rounded-2xl border border-[var(--border-main)] overflow-hidden focus-within:border-[var(--text-muted)] transition-all">
-          <textarea
-            ref={textareaRef}
-            value={input}
-            onChange={handleInputChange}
-            onKeyDown={e => {
-              if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend() }
-              if (e.key === 'Escape') setShowAtMention(false)
-            }}
-            placeholder="Ask anything, @ to mention a file..."
-            rows={3}
-            className="w-full bg-transparent text-[var(--text-main)] text-[13px] p-3 focus:outline-none resize-none min-h-[64px] max-h-[150px] no-scrollbar"
-            style={{ fieldSizing: 'content' } as any}
-            disabled={isThinking}
-          />
-          <div className="flex items-center justify-between px-3 py-2 border-t border-[var(--border-main)]">
-            <div className="flex items-center space-x-1">
-              <button
-                onClick={() => setMode(m => m === 'fast' ? 'planning' : 'fast')}
-                className={cn('px-2 py-1 text-[9px] font-black uppercase tracking-widest rounded-md transition-all',
-                  mode === 'planning' ? 'text-amber-400 bg-amber-400/10' : 'text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border-main)]'
-                )}
-              >
-                {mode}
-              </button>
-              <div className="relative">
-                <button onClick={() => setShowModels(!showModels)}
-                  className="flex items-center px-2 py-1 space-x-1.5 text-[9px] uppercase font-black tracking-widest text-[var(--text-muted)] hover:text-[var(--text-main)] hover:bg-[var(--border-main)] rounded-md transition-all">
-                  <Layers size={11} />
-                  <span className="max-w-[80px] truncate">{selectedModel || 'Model'}</span>
-                </button>
-                {showModels && (
-                  <>
-                    <div className="fixed inset-0 z-[190]" onClick={() => setShowModels(false)} />
-                    <div className="absolute bottom-full mb-2 left-0 w-52 bg-[var(--bg-side)]/95 backdrop-blur-xl border border-[var(--border-main)] rounded-xl shadow-2xl overflow-hidden z-[200]">
-                      <div className="px-3 py-2 border-b border-[var(--border-main)] bg-[var(--bg-side)]">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-[var(--text-muted)]">Models</span>
-                      </div>
-                      {models.length > 0 ? models.map(m => (
-                        <button key={m.name} onClick={() => { setSelectedModel(m.name); OllamaService.setModel(m.name); setShowModels(false) }}
-                          className={cn('w-full text-left px-3 py-2.5 text-[11px] hover:bg-[var(--bg-main)] transition-colors border-b border-[var(--border-main)]/50 last:border-0',
-                            selectedModel === m.name ? 'text-blue-400' : 'text-[var(--text-muted)]'
-                          )}>
-                          {m.name}
-                        </button>
-                      )) : (
-                        <div className="px-3 py-4 text-[10px] text-[var(--text-muted)] italic text-center">No models detected</div>
-                      )}
-                    </div>
-                  </>
-                )}
               </div>
             </div>
-            <button
-              onClick={() => handleSend()}
-              disabled={isThinking || !input.trim()}
-              className={cn('p-2 rounded-xl transition-all',
-                isThinking || !input.trim() ? 'bg-[var(--border-main)] text-[var(--text-muted)] cursor-not-allowed' : 'bg-white text-black hover:shadow-[0_0_20px_rgba(255,255,255,0.15)] active:scale-95'
-              )}
-            >
-              <Send size={16} fill="currentColor" />
-            </button>
           </div>
-        </div>
-      </div>
+        </>
+      )}
     </div>
   )
 }
 
-// Inline text renderer with basic markdown
 function MessageBody({ content }: { content: string }) {
   const [copied, setCopied] = useState(false)
-  // Split on code blocks
   const parts = content.split(/(```[\w]*\n[\s\S]*?```)/g)
 
   return (
-    <div className="whitespace-pre-wrap text-[12.5px] leading-relaxed space-y-2">
+    <div className="whitespace-pre-wrap leading-relaxed space-y-4 font-outfit">
       {parts.map((part, i) => {
         if (part.startsWith('```')) {
           const lineBreak = part.indexOf('\n')
           const lang = part.slice(3, lineBreak).trim()
           const code = part.slice(lineBreak + 1).replace(/```$/, '').trim()
           return (
-            <div key={i} className="relative group rounded-lg overflow-hidden border border-[var(--border-main)] bg-[var(--bg-main)] my-2">
-              <div className="flex items-center justify-between px-3 py-1.5 bg-[var(--bg-side)] border-b border-[var(--border-main)]">
-                <span className="text-[9px] text-[var(--text-muted)] font-mono">{lang || 'code'}</span>
-                <button onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000) }}
-                  className="text-[9px] text-[var(--text-muted)] hover:text-[var(--text-main)] flex items-center space-x-1 transition-colors">
-                  {copied ? <Check size={10} className="text-emerald-400" /> : <Copy size={10} />}
+            <div key={i} className="my-3 rounded-2xl overflow-hidden border border-[var(--border-main)] bg-[#0A0A0C] shadow-lg group">
+              <div className="flex items-center justify-between px-4 py-2 bg-white/5 border-b border-[var(--border-main)]">
+                <span className="text-[10px] font-mono text-[var(--text-muted)] uppercase tracking-widest">{lang || 'code'}</span>
+                <button onClick={() => { navigator.clipboard.writeText(code); setCopied(true); setTimeout(() => setCopied(false), 2000) }} className="text-[10px] font-bold text-[var(--text-muted)] hover:text-white flex items-center space-x-1.5 transition-colors bg-white/5 hover:bg-white/10 px-2.5 py-1.5 rounded-lg active:scale-95">
+                  {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
                   <span>{copied ? 'Copied' : 'Copy'}</span>
                 </button>
               </div>
-              <pre className="p-3 text-[11px] text-[var(--text-main)] font-mono overflow-x-auto">{code}</pre>
+              <div className="p-4 overflow-x-auto no-scrollbar">
+                <pre className="text-[12.5px] text-[#E4E4E5] font-mono leading-loose">{code}</pre>
+              </div>
             </div>
           )
         }
-        return <span key={i}>{part}</span>
+        return <span key={i} className={cn("", part.startsWith('PLAN:') && 'font-bold text-blue-400')}>{part}</span>
       })}
     </div>
   )

@@ -21,7 +21,7 @@ const SearchSidebar: React.FC<SearchSidebarProps> = ({ workspacePath, onResultCl
     if (!query.trim() || !workspacePath) return
     setIsSearching(true)
     try {
-      const resp = await window.capsicode.searchWorkspace(workspacePath, query)
+      const resp = await window.em.searchWorkspace(workspacePath, query)
       setResults(resp)
     } catch (err) {
       console.error(err)

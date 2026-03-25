@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useCallback } from 'react'
 import * as monaco from 'monaco-editor'
+import { Sparkles } from 'lucide-react'
 import { useIDE } from '../context/IDEContext'
 
 // ─── Language detection ───────────────────────────────────────────────────────
@@ -32,7 +33,7 @@ function ensureThemes() {
   if (themesRegistered) return
   themesRegistered = true
 
-  monaco.editor.defineTheme('capsicode-dark', {
+  monaco.editor.defineTheme('em-dark', {
     base: 'vs-dark',
     inherit: true,
     rules: [
@@ -55,7 +56,7 @@ function ensureThemes() {
     },
   })
 
-  monaco.editor.defineTheme('capsicode-light', {
+  monaco.editor.defineTheme('em-light', {
     base: 'vs',
     inherit: true,
     rules: [],
@@ -64,7 +65,7 @@ function ensureThemes() {
     },
   })
 
-  monaco.editor.defineTheme('capsicode-monokai', {
+  monaco.editor.defineTheme('em-monokai', {
     base: 'vs-dark',
     inherit: true,
     rules: [
@@ -81,9 +82,9 @@ function ensureThemes() {
 }
 
 const THEME_MAP: Record<string, string> = {
-  dark: 'capsicode-dark',
-  light: 'capsicode-light',
-  monokai: 'capsicode-monokai',
+  dark: 'em-dark',
+  light: 'em-light',
+  monokai: 'em-monokai',
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -110,7 +111,7 @@ export default function Editor({ onInlineAIRequest }: EditorProps) {
     const editor = monaco.editor.create(containerRef.current, {
       value: '',
       language: 'plaintext',
-      theme: THEME_MAP[theme] ?? 'capsicode-dark',
+      theme: THEME_MAP[theme] ?? 'em-dark',
       automaticLayout: true,
       fontSize: 14,
       fontFamily: "'JetBrains Mono', 'Fira Code', 'Cascadia Code', Menlo, Consolas, monospace",
@@ -154,14 +155,14 @@ export default function Editor({ onInlineAIRequest }: EditorProps) {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
       saveTimerRef.current = setTimeout(async () => {
         const content = editor.getValue()
-        await window.capsicode.writeFile(file, content)
+        await window.em.writeFile(file, content)
         dispatch({ type: 'SET_FILE_DIRTY', path: file, isDirty: false })
       }, 1000) // 1-second auto-save debounce
     })
 
     // Register Ctrl+K (Inline AI)
     editor.addAction({
-      id: 'capsicode.inline-ai',
+      id: 'em.inline-ai',
       label: 'Ask AI (Inline)',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyK],
       run: (ed) => {
@@ -176,14 +177,14 @@ export default function Editor({ onInlineAIRequest }: EditorProps) {
 
     // Register Ctrl+S (explicit save)
     editor.addAction({
-      id: 'capsicode.save',
+      id: 'em.save',
       label: 'Save File',
       keybindings: [monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS],
       run: async (ed) => {
         const file = prevFileRef.current
         if (!file) return
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        await window.capsicode.writeFile(file, ed.getValue())
+        await window.em.writeFile(file, ed.getValue())
         dispatch({ type: 'SET_FILE_DIRTY', path: file, isDirty: false })
       },
     })
@@ -227,19 +228,19 @@ export default function Editor({ onInlineAIRequest }: EditorProps) {
         case 'add-all-occurrences': editor.trigger('keyboard', 'editor.action.selectHighlights', null); break
       }
     }
-    window.addEventListener('capsicode-command', commandHandler)
+    window.addEventListener('em-command', commandHandler)
 
     return () => {
       disposable.dispose()
       editor.dispose()
-      window.removeEventListener('capsicode-command', commandHandler)
+      window.removeEventListener('em-command', commandHandler)
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
     }
   }, [state.autoSave]) // re-bind if autoSave toggles to update closures? Actually better to use ref for autoSave
 
   // Sync theme changes
   useEffect(() => {
-    monaco.editor.setTheme(THEME_MAP[theme] ?? 'capsicode-dark')
+    monaco.editor.setTheme(THEME_MAP[theme] ?? 'em-dark')
   }, [theme])
 
   // Handle file switching — the critical multi-file logic
@@ -270,7 +271,7 @@ export default function Editor({ onInlineAIRequest }: EditorProps) {
 
     if (!model) {
       // Load the file content and create a new persistent model
-      window.capsicode.readFile(activeFile).then(content => {
+      window.em.readFile(activeFile).then(content => {
         const lang = getLanguage(activeFile)
         const newModel = monaco.editor.createModel(content ?? '', lang, uri)
         editor.setModel(newModel)
@@ -303,8 +304,9 @@ export default function Editor({ onInlineAIRequest }: EditorProps) {
 
   const WelcomeScreen = () => (
     <div className="absolute inset-0 flex flex-col items-center justify-center bg-[var(--bg-main)] select-none z-20">
-      <div className="text-5xl font-black text-[var(--text-main)] opacity-5 tracking-tight mb-2">CapsiCode</div>
-      <div className="text-sm text-[var(--text-muted)] mb-8">AI-powered local IDE</div>
+      <img src="/icon.png" alt="Exotic Matter Logo" className="w-[80px] h-[80px] rounded-3xl object-cover shadow-[0_10px_40px_rgba(107,140,255,0.2)] mb-6" />
+      <div className="text-4xl font-black text-[var(--text-main)] opacity-10 tracking-tight mb-2">Exotic Matter</div>
+      <div className="text-sm text-[var(--text-muted)] mb-8 opacity-60">AI-powered local IDE</div>
       <div className="flex flex-col space-y-2.5 text-[11px] font-mono">
         {[
           ['Open Folder', 'Ctrl+O'],

@@ -20,7 +20,7 @@ const GitSidebar: React.FC<GitSidebarProps> = ({ workspacePath, onShowDiff }) =>
     if (!workspacePath) return
     setIsLoading(true)
     try {
-      const status = await window.capsicode.getGitStatus(workspacePath)
+      const status = await window.em.getGitStatus(workspacePath)
       setChanges(status)
     } catch (err) {
       console.error(err)

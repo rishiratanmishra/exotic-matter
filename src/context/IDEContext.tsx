@@ -297,7 +297,7 @@ interface IDEContextValue {
 
 const IDEContext = createContext<IDEContextValue | null>(null)
 
-const PERSIST_KEY = 'capsicode_ide_state_v2'
+const PERSIST_KEY = 'em_ide_state_v2'
 
 function persistState(state: IDEState) {
   try {
@@ -331,7 +331,7 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
       const saved = JSON.parse(raw) as Partial<IDEState>
       if (saved.workspacePath) {
         // Re-validate workspace still exists
-        window.capsicode.setWorkspacePath(saved.workspacePath)
+        window.em.setWorkspacePath(saved.workspacePath)
         dispatch({
           type: 'RESTORE_PERSISTED',
           state: {
@@ -346,7 +346,7 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
           },
         })
         // Refresh file index
-        window.capsicode.listAllFiles(saved.workspacePath).then(files => {
+        window.em.listAllFiles(saved.workspacePath).then(files => {
           dispatch({ type: 'SET_ALL_FILES', files })
         })
       }
@@ -355,7 +355,7 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
 
   // Extensions loader
   const refreshExtensions = useCallback(async () => {
-    const extensions = await window.capsicode.listExtensions()
+    const extensions = await window.em.listExtensions()
     dispatch({ type: 'SET_EXTENSIONS', extensions })
   }, [])
 
@@ -368,7 +368,7 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
        dispatch({ type: 'SET_CUSTOM_THEME', theme: null })
        return
     }
-    const json = await window.capsicode.getExtensionFile(id, 'theme.json')
+    const json = await window.em.getExtensionFile(id, 'theme.json')
     if (json) {
       try {
         const theme = JSON.parse(json)
@@ -416,23 +416,23 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   const openFolder = useCallback(async () => {
-    const path = await window.capsicode.openFolder()
+    const path = await window.em.openFolder()
     if (!path) return
     dispatch({ type: 'SET_WORKSPACE', path })
     // Index files in background
-    window.capsicode.listAllFiles(path).then(files => {
+    window.em.listAllFiles(path).then(files => {
       dispatch({ type: 'SET_ALL_FILES', files })
     })
   }, [])
 
   const openIndividualFile = useCallback(async () => {
-    const path = await window.capsicode.openFile()
+    const path = await window.em.openFile()
     if (!path) return
     openFile(path)
   }, [openFile])
 
   const closeFolder = useCallback(() => {
-    window.capsicode.setWorkspacePath(null)
+    window.em.setWorkspacePath(null)
     dispatch({ type: 'SET_WORKSPACE', path: null })
   }, [])
 
@@ -441,7 +441,7 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
     const model = monaco.editor.getModel(monaco.Uri.file(path))
     if (model) {
       const content = model.getValue()
-      await window.capsicode.writeFile(path, content)
+      await window.em.writeFile(path, content)
       dispatch({ type: 'SET_FILE_DIRTY', path, isDirty: false })
     }
   }, [])
@@ -451,7 +451,7 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
     const model = monaco.editor.getModel(monaco.Uri.file(path))
     if (model) {
       const content = model.getValue()
-      const newPath = await window.capsicode.saveFileAs(content)
+      const newPath = await window.em.saveFileAs(content)
       if (newPath) {
         closeFile(path)
         openFile(newPath)
@@ -480,16 +480,16 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
     else if (ext === 'sh') command = `bash "${activeFile}"`
     if (command) {
       dispatch({ type: 'TOGGLE_TERMINAL' })
-      window.capsicode.terminalWrite(activeTerminalId, command + '\r\n')
+      window.em.terminalWrite(activeTerminalId, command + '\r\n')
     }
   }, [state.activeFile, state.activeTerminalId])
 
   const triggerCreateFile = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'create-file' } }))
+    window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'create-file' } }))
   }, [])
 
   const triggerCreateFolder = useCallback(() => {
-    window.dispatchEvent(new CustomEvent('capsicode-command', { detail: { command: 'create-folder' } }))
+    window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'create-folder' } }))
   }, [])
 
   return (

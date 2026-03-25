@@ -32,8 +32,8 @@ export default function FileExplorer({ workspacePath, onFileSelect }: FileExplor
 
   useEffect(() => {
     const loadRoot = async () => {
-      const path = workspacePath || await window.capsicode.getAppPath()
-      const entries = await window.capsicode.listDir(path)
+      const path = workspacePath || await window.em.getAppPath()
+      const entries = await window.em.listDir(path)
       setFiles(entries.sort((a: FileNode, b: FileNode) => {
         if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
         return a.name.localeCompare(b.name)
@@ -49,7 +49,7 @@ export default function FileExplorer({ workspacePath, onFileSelect }: FileExplor
           const isOpen = !n.isOpen
           let children = n.children
           if (isOpen && !children) {
-            const raw = await window.capsicode.listDir(n.path)
+            const raw = await window.em.listDir(n.path)
             children = (raw as FileNode[]).sort((a, b) => {
               if (a.isDir !== b.isDir) return a.isDir ? -1 : 1
               return a.name.localeCompare(b.name)
@@ -79,7 +79,7 @@ export default function FileExplorer({ workspacePath, onFileSelect }: FileExplor
     if (!newName.trim() || newName === node.name) return
     const parentDir = node.path.substring(0, node.path.length - node.name.length).replace(/[/\\]$/, '')
     const newPath = `${parentDir}/${newName.trim()}`
-    const result = await window.capsicode.renameFile(node.path, newPath)
+    const result = await window.em.renameFile(node.path, newPath)
     if (result.success) setRefreshKey(k => k + 1)
   }
 
@@ -87,7 +87,7 @@ export default function FileExplorer({ workspacePath, onFileSelect }: FileExplor
     setContextMenu(null)
     const confirmed = window.confirm(`Delete "${node.name}"? This cannot be undone.`)
     if (!confirmed) return
-    const result = await window.capsicode.deleteFile(node.path)
+    const result = await window.em.deleteFile(node.path)
     if (result.success) setRefreshKey(k => k + 1)
   }
 
@@ -112,9 +112,9 @@ export default function FileExplorer({ workspacePath, onFileSelect }: FileExplor
     const newPath = `${parent}/${name.trim()}`
     let result
     if (type === 'file') {
-      result = await window.capsicode.createFile(newPath)
+      result = await window.em.createFile(newPath)
     } else {
-      result = await window.capsicode.createDirectory(newPath)
+      result = await window.em.createDirectory(newPath)
     }
 
     if (result.success) {

@@ -1,4 +1,4 @@
-# 🦙 Ollama Docker Guide (CapsiCode)
+# 🦙 Ollama Docker Guide (Exotic Matter)
 
 Aapka Ollama server ab Docker container ke andar chal raha hai. Isse manage karne ke liye niche diye gaye commands ka use karein:
 
