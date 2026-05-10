@@ -1,5 +1,5 @@
 // Global window.em types are in src/global.d.ts
-import { OllamaService, OllamaMessage } from '../ollama'
+import { LocalAgentService, LocalMessage } from '../LocalAgentService'
 import { AGENT_TOOLS, buildToolsPromptSection } from './tools'
 
 // Safe delimiter that doesn't appear in file paths or normal text
@@ -16,7 +16,7 @@ function buildSystemPrompt(ctx: AgentContext): string {
     ? ctx.allFiles.slice(0, 300).join('\n')
     : '(no workspace open)'
 
-  return `You are Exotic Matter AI — an expert coding assistant embedded in a local IDE.
+  return `You are Exotic Matter AI — an expert coding assistant powered by Gemma 4.
 
 ## Context
 - Workspace: ${ctx.workspacePath ?? 'none'}
@@ -46,12 +46,12 @@ ${buildToolsPromptSection(AGENT_TOOLS)}
  * Trim messages to stay within token budget.
  * Keeps the system prompt + most recent N messages.
  */
-function trimMessages(messages: OllamaMessage[], maxChars = 16_000): OllamaMessage[] {
+function trimMessages(messages: LocalMessage[], maxChars = 32_000): LocalMessage[] {
   const system = messages.filter(m => m.role === 'system')
   const conversation = messages.filter(m => m.role !== 'system')
 
   let total = system.reduce((acc, m) => acc + m.content.length, 0)
-  const trimmed: OllamaMessage[] = []
+  const trimmed: LocalMessage[] = []
 
   for (let i = conversation.length - 1; i >= 0; i--) {
     const len = conversation[i].content.length
@@ -94,7 +94,7 @@ function parseToolCall(response: string): { tool: string; args: Record<string, a
 }
 
 export class AgentExecutor {
-  private messages: OllamaMessage[] = []
+  private messages: LocalMessage[] = []
   private context: AgentContext = { workspacePath: null, activeFile: null, allFiles: [] }
 
   constructor() {
@@ -105,7 +105,7 @@ export class AgentExecutor {
     this.context = { ...this.context, ...ctx }
   }
 
-  setHistory(history: OllamaMessage[]) {
+  setHistory(history: LocalMessage[]) {
     // Rebuild: keep system at top, replace conversation
     this.messages = [
       { role: 'system', content: buildSystemPrompt(this.context) },
@@ -119,7 +119,7 @@ export class AgentExecutor {
     onStream?: (chunk: string) => void
   ): Promise<string> {
     // Ensure fresh system prompt with latest context
-    const systemMsg: OllamaMessage = { role: 'system', content: buildSystemPrompt(this.context) }
+    const systemMsg: LocalMessage = { role: 'system', content: buildSystemPrompt(this.context) }
     // Replace existing system msg or prepend
     if (this.messages.length > 0 && this.messages[0].role === 'system') {
       this.messages[0] = systemMsg
@@ -135,7 +135,7 @@ export class AgentExecutor {
     while (toolCallsLeft > 0) {
       onUpdate('Thinking...')
       const trimmed = trimMessages(this.messages)
-      const response = await OllamaService.chat(trimmed, onStream)
+      const response = await LocalAgentService.chat(trimmed, onStream)
 
       if (!response) {
         return 'No response from model.'

@@ -44,3 +44,5 @@ desktop.ini
 .gemini/
 .antigravityignore
 /tmp/
+# Models
+models/

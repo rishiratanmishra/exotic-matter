@@ -328,6 +328,7 @@ ipcMain.handle('save-file-as', async (_event, content: string) => {
 // ─── IPC: File System ─────────────────────────────────────────────────────────
 ipcMain.handle('list-dir', async (_event, path: string) => {
   try {
+    assertSafePath(path)
     const entries = await readdir(path, { withFileTypes: true })
     return entries.map(e => ({
       name: e.name,
@@ -442,6 +443,7 @@ ipcMain.handle('list-all-files', async (_event, rootPath: string) => {
 ipcMain.handle('search-workspace', async (_event, rootPath: string, query: string) => {
   if (!rootPath || !query) return []
   try {
+    assertSafePath(rootPath)
     // Try ripgrep first (fast path)
     const { stdout } = await execFileAsync(
       'rg',
@@ -616,7 +618,30 @@ ipcMain.handle('git-commit', async (_event, rootPath: string, message: string) =
   }
 })
 
-// ─── IPC: AI / Ollama ─────────────────────────────────────────────────────────
+// ─── IPC: AI / Local Model ───────────────────────────────────────────────────
+import { LocalModelRunner } from './core/LocalModelRunner'
+const localModelRunner = new LocalModelRunner()
+
+ipcMain.handle('local-ai-load', async (_event, modelPath: string) => {
+  return await localModelRunner.initialize(modelPath)
+})
+
+ipcMain.handle('local-ai-chat', async (event, { messages }: { messages: any[] }) => {
+  try {
+    return await localModelRunner.chat(messages, (chunk) => {
+      if (!event.sender.isDestroyed()) {
+        event.sender.send('local-ai-token', chunk)
+      }
+    })
+  } catch (err: any) {
+    return { error: err.message }
+  }
+})
+
+ipcMain.handle('local-ai-status', () => {
+  return { loaded: localModelRunner.isLoaded() }
+})
+
 import { CommandRegistry } from './core/CommandRegistry'
 
 ipcMain.handle('get-extension-commands', () => {

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react'
 import { Send, User, Bot, Loader2, Plus, History, Layers, X, AtSign, Check, Copy, ChevronRight, Settings, Image, PenTool, Mic, ArrowRight, ChevronDown } from 'lucide-react'
 import { AgentExecutor, PROPOSAL_DELIM } from '../services/agent/executor'
-import { OllamaService } from '../services/ollama'
+import { LocalAgentService } from '../services/LocalAgentService'
 import DiffViewer from './DiffViewer'
 import { useIDE } from '../context/IDEContext'
 
@@ -45,12 +45,18 @@ export default function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    window.em.getModels().then((list: any[]) => {
-      setModels(list)
-      if (list.length > 0 && !selectedModel) {
-        setSelectedModel(list[0].name)
-        OllamaService.setModel(list[0].name)
+    // Initialize the internal Gemma 4 model
+    const modelPath = state.localModelPath || 'd:\\exotic-matter\\models\\gemma-4-it.gguf'
+    setAgentStatus('Initializing Gemma 4...')
+    LocalAgentService.loadModel(modelPath).then(res => {
+      if (res.success) {
+        setModels([{ name: 'Gemma 4 (Local)' }])
+        setSelectedModel('Gemma 4 (Local)')
+        setAgentStatus('Gemma 4 Ready')
+      } else {
+        setAgentStatus(`Error: ${res.error}`)
       }
+      setTimeout(() => setAgentStatus(null), 3000)
     })
   }, [])
 
@@ -401,7 +407,7 @@ export default function Chat() {
                         <div className="absolute bottom-[calc(100%+12px)] left-0 min-w-[220px] bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl shadow-2xl overflow-hidden z-[200] animate-in fade-in slide-in-from-bottom-2">
                           <div className="py-1.5">
                             {models.length > 0 ? models.map(m => (
-                              <button key={m.name} onClick={() => { setSelectedModel(m.name); OllamaService.setModel(m.name); setShowModels(false) }} className={cn('w-full text-left px-4 py-2.5 text-[13px] hover:bg-[#303030] transition-colors flex items-center space-x-2.5', selectedModel === m.name ? 'text-white' : 'text-[#a3a3a3]')}>
+                              <button key={m.name} onClick={() => { setSelectedModel(m.name); setShowModels(false) }} className={cn('w-full text-left px-4 py-2.5 text-[13px] hover:bg-[#303030] transition-colors flex items-center space-x-2.5', selectedModel === m.name ? 'text-white' : 'text-[#a3a3a3]')}>
                                 <span className="truncate">{m.name}</span>
                               </button>
                             )) : (

@@ -70,6 +70,16 @@ contextBridge.exposeInMainWorld('em', {
   aiChat: (payload: { model: string; messages: any[]; stream: boolean }) =>
     ipcRenderer.invoke('ai-chat', payload),
 
+  // Local AI
+  localAiLoad: (modelPath: string) => ipcRenderer.invoke('local-ai-load', modelPath),
+  localAiChat: (payload: { messages: any[] }) => ipcRenderer.invoke('local-ai-chat', payload),
+  localAiStatus: () => ipcRenderer.invoke('local-ai-status'),
+  onLocalAiToken: (callback: (token: string) => void) => {
+    const handler = (_: any, token: string) => callback(token)
+    ipcRenderer.on('local-ai-token', handler)
+    return () => ipcRenderer.removeListener('local-ai-token', handler)
+  },
+
   // Shell
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),
 })

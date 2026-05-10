@@ -5,27 +5,58 @@ import fs from 'fs';
 if (!parentPort) throw new Error("Must run as a worker thread");
 
 if (process.env.STRICT_PERMS === 'true') {
-  const originalReadFile = fs.readFile;
-  (fs as any).readFile = function(...args: any[]) {
-    const filePath = args[0] as string;
-    if (filePath.includes('/etc/passwd') || filePath.includes('C:\\Windows')) {
-       throw new Error(`[Sandbox] FS Read Access Denied: ${filePath}`);
+  // Block dangerous modules
+  const blockedModules = ['child_process', 'cluster', 'v8', 'vm'];
+  const Module = require('module');
+  const originalRequire = Module.prototype.require;
+  
+  Module.prototype.require = function(request: string) {
+    if (blockedModules.includes(request)) {
+      throw new Error(`[Sandbox] Module Access Denied: ${request}`);
     }
-    return originalReadFile.apply(fs, args as any);
+    if (request === 'vscode' || request === 'em') {
+        return apiShim;
+    }
+    return originalRequire.apply(this, arguments);
+  };
+
+  // Block sensitive FS access
+  const path = require('path');
+  const proxyFs = new Proxy(fs, {
+    get(target, prop) {
+      const original = (target as any)[prop];
+      if (typeof original === 'function') {
+        return (...args: any[]) => {
+          const firstArg = args[0];
+          if (typeof firstArg === 'string') {
+            const resolvedPath = path.resolve(firstArg);
+            const isSafe = resolvedPath.startsWith(extPath) || 
+                           (process.env.WORKSPACE_PATH && resolvedPath.startsWith(process.env.WORKSPACE_PATH));
+            
+            if (!isSafe && !resolvedPath.includes('node_modules')) {
+               throw new Error(`[Sandbox] FS Access Denied: ${resolvedPath}. Extensions can only access their own files or the workspace.`);
+            }
+          }
+          return original.apply(target, args);
+        };
+      }
+      return original;
+    }
+  });
+  
+  // Replace fs with proxy
+  (fs as any) = proxyFs;
+} else {
+  // Even if not strict, still provide the API shim
+  const Module = require('module');
+  const originalRequire = Module.prototype.require;
+  Module.prototype.require = function(request: string) {
+    if (request === 'vscode' || request === 'em') {
+      return apiShim;
+    }
+    return originalRequire.apply(this, arguments);
   };
 }
-
-const { extId, extPath, manifest } = workerData;
-const apiShim = createApiShim(parentPort);
-
-const Module = require('module');
-const originalRequire = Module.prototype.require;
-Module.prototype.require = function(request: string) {
-  if (request === 'vscode' || request === 'em') {
-    return apiShim;
-  }
-  return originalRequire.apply(this, arguments);
-};
 
 parentPort.on('message', async (msg) => {
   if (msg.type === 'ACTIVATE_EXTENSION') {

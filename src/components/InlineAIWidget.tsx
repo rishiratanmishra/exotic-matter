@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react'
 import { X, Loader2, Check, Copy, ArrowRight } from 'lucide-react'
-import { OllamaService } from '../services/ollama'
+import { LocalAgentService } from '../services/LocalAgentService'
 
 interface InlineAIWidgetProps {
   selectedText: string
@@ -41,7 +41,7 @@ export default function InlineAIWidget({ selectedText, filePath, onClose }: Inli
     ]
 
     try {
-      await OllamaService.chat(messages, chunk => {
+      await LocalAgentService.chat(messages, chunk => {
         setResult(prev => prev + chunk)
       })
     } catch (err) {

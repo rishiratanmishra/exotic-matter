@@ -15,7 +15,7 @@ export default defineConfig({
         vite: {
           build: {
             rollupOptions: {
-              external: ['node-pty', 'electron'],
+              external: ['node-pty', 'electron', 'node-llama-cpp'],
               output: {
                 entryFileNames: '[name].js',
                 format: 'cjs',

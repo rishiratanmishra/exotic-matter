@@ -28,6 +28,7 @@ export interface IDEState {
   // Workspace
   workspacePath: string | null
   allFiles: string[]
+  localModelPath: string | null
 
   // Editor
   openFiles: string[]
@@ -88,6 +89,7 @@ type Action =
   | { type: 'SET_CUSTOM_THEME'; theme: Record<string, string> | null }
   | { type: 'SET_EXTENSIONS'; extensions: Extension[] }
   | { type: 'REFRESH_EXTENSIONS' }
+  | { type: 'SET_LOCAL_MODEL_PATH'; path: string | null }
   | { type: 'RESTORE_PERSISTED'; state: Partial<IDEState> }
 
 // ─── Reducer ─────────────────────────────────────────────────────────────────
@@ -248,6 +250,9 @@ function ideReducer(state: IDEState, action: Action): IDEState {
     case 'TOGGLE_ZEN_MODE':
       return { ...state, zenMode: !state.zenMode }
 
+    case 'SET_LOCAL_MODEL_PATH':
+      return { ...state, localModelPath: action.path }
+
     case 'RESTORE_PERSISTED':
       return { ...state, ...action.state }
 
@@ -268,6 +273,7 @@ const initialState: IDEState = {
   fileStates: {},
   terminals: [{ id: INITIAL_TERMINAL_ID, label: 'Terminal 1' }],
   activeTerminalId: INITIAL_TERMINAL_ID,
+  localModelPath: 'd:\\exotic-matter\\models\\gemma-4-it.gguf',
   terminalOpen: false,
   terminalHeight: 260,
   splitTerminal: false,
@@ -326,6 +332,7 @@ function persistState(state: IDEState) {
         sidebarWidth: state.sidebarWidth,
         chatWidth: state.chatWidth,
         autoSave: state.autoSave,
+        localModelPath: state.localModelPath,
       })
     )
   } catch { /* ignore quota errors */ }
@@ -359,6 +366,7 @@ export function IDEProvider({ children }: { children: React.ReactNode }) {
             sidebarWidth: saved.sidebarWidth ?? 260,
             chatWidth: saved.chatWidth ?? 380,
             autoSave: saved.autoSave ?? true,
+            localModelPath: saved.localModelPath ?? 'd:\\exotic-matter\\models\\gemma-4-it.gguf',
           },
         })
         // Refresh file index

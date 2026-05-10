@@ -22,6 +22,7 @@
     "diff": "^8.0.4",
     "lucide-react": "^0.284.0",
     "monaco-editor": "^0.44.0",
+    "node-llama-cpp": "^3.18.1",
     "node-pty": "^1.1.0",
     "react": "^18.2.0",
     "react-diff-viewer-continued": "^4.2.0",
