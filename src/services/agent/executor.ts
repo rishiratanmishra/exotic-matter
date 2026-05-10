@@ -1,6 +1,9 @@
 // Global window.em types are in src/global.d.ts
 import { LocalAgentService, LocalMessage } from '../LocalAgentService'
 import { AGENT_TOOLS, buildToolsPromptSection } from './tools'
+import { VectorStorage } from '../VectorStorage'
+import { store } from '../../store'
+import { setTasks, updateArtifact } from '../../store/planSlice'
 
 // Safe delimiter that doesn't appear in file paths or normal text
 export const PROPOSAL_DELIM = '|||DELIM|||'
@@ -9,6 +12,7 @@ export interface AgentContext {
   workspacePath: string | null
   activeFile: string | null
   allFiles: string[]
+  activeTerminalId: number
 }
 
 function buildSystemPrompt(ctx: AgentContext): string {
@@ -95,7 +99,7 @@ function parseToolCall(response: string): { tool: string; args: Record<string, a
 
 export class AgentExecutor {
   private messages: LocalMessage[] = []
-  private context: AgentContext = { workspacePath: null, activeFile: null, allFiles: [] }
+  private context: AgentContext = { workspacePath: null, activeFile: null, allFiles: [], activeTerminalId: 0 }
 
   constructor() {
     // System prompt is rebuilt per-run so context stays fresh
@@ -137,7 +141,7 @@ export class AgentExecutor {
       const trimmed = trimMessages(this.messages)
       const response = await LocalAgentService.chat(trimmed, onStream)
 
-      if (!response) {
+      if (!response || typeof response !== 'string') {
         return 'No response from model.'
       }
 
@@ -254,6 +258,45 @@ export class AgentExecutor {
         case 'list_extension_commands': {
           const cmds = await window.em.getExtensionCommands()
           return JSON.stringify(cmds)
+        }
+
+        case 'semantic_search': {
+          onUpdate(`🧠 Searching memory for: ${args.query}`)
+          const embedding = await LocalAgentService.generateEmbedding(args.query)
+          if (embedding && !embedding.error) {
+            const results = await VectorStorage.search(embedding, 5)
+            if (results.length === 0) return 'No relevant code found in indexed memory.'
+            return results
+              .map(r => `File: ${r.path}\nContent:\n${r.content}`)
+              .join('\n---\n')
+          }
+          return 'Failed to generate embedding for search.'
+        }
+
+        case 'send_terminal_input': {
+          onUpdate(`⌨ Sending terminal input...`)
+          window.em.terminalWrite(this.context.activeTerminalId || 0, args.input)
+          return '✅ Input sent to terminal'
+        }
+
+        case 'create_plan': {
+          onUpdate(`📝 Creating implementation plan...`)
+          store.dispatch(setTasks(args.tasks.map((t: any) => ({ ...t, status: 'pending' }))))
+          // Auto-switch sidebar to plan tab if possible (via bridge)
+          window.dispatchEvent(new CustomEvent('em-command', { detail: { command: 'switch-tab', tab: 'plan' } }))
+          return '✅ Plan created and shown in sidebar'
+        }
+
+        case 'generate_ui': {
+          onUpdate(`🎨 Generating UI preview...`)
+          const id = `ui-${Date.now()}`
+          store.dispatch(updateArtifact({
+            id,
+            title: args.title,
+            type: 'code',
+            content: args.content
+          }))
+          return `✅ UI artifact "${args.title}" generated. Preview it in the artifacts section.`
         }
 
         default:

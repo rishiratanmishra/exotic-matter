@@ -3,7 +3,7 @@ import MenuBarMenu from './MenuBarMenu'
 import {
   Files, MessageSquare, Search, GitBranch, Sparkles, Settings,
   Terminal as TerminalIcon, X, Maximize2, Command, FileCode,
-  Play, Plus, Layers, FilePlus, FolderPlus, RefreshCw, ChevronRight, Keyboard, Coffee
+  Play, Plus, Layers, FilePlus, FolderPlus, RefreshCw, ChevronRight, Keyboard, Coffee, ClipboardList
 } from 'lucide-react'
 import { clsx, type ClassValue } from 'clsx'
 import { twMerge } from 'tailwind-merge'
@@ -19,9 +19,14 @@ import CommandPalette from '../CommandPalette'
 import Chat from '../Chat'
 import InlineAIWidget from '@/components/InlineAIWidget'
 import KeyboardShortcuts from '../KeyboardShortcuts'
-import ExtensionsSidebar from '../sidebar/ExtensionsSidebar'
 import ExtensionDetails from '../ExtensionDetails'
 import VibePanel from '../sidebar/VibePanel'
+import PlanSidebar from '../sidebar/PlanSidebar'
+import UIPreview from '../UIPreview'
+import { Indexer } from '../../services/Indexer'
+import { setIndexing } from '../../store/appSlice'
+import { useDispatch as useReduxDispatch, useSelector } from 'react-redux'
+import { RootState } from '../../store'
 
 function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 
@@ -30,6 +35,7 @@ const NAV_ITEMS = [
   { id: 'explorer', icon: Files, label: 'Explorer' },
   { id: 'search',   icon: Search, label: 'Search' },
   { id: 'git',      icon: GitBranch, label: 'Source Control' },
+  { id: 'plan',     icon: ClipboardList, label: 'Implementation Plan' },
   { id: 'chat',     icon: 'custom-icon', label: 'Exotic Matter AI' },
   { id: 'extensions', icon: Layers, label: 'Extensions' },
   { id: 'vibe',    icon: Coffee, label: 'Vibe Mode' },
@@ -307,6 +313,18 @@ export default function Shell() {
     openFiles, activeFile, chatOpen, chatWidth, commandPaletteOpen, fileStates
   } = state
 
+  const reduxDispatch = useReduxDispatch();
+  const reduxAppState = useSelector((state: RootState) => state.app);
+
+  const handleIndexProject = useCallback(async () => {
+    if (!workspacePath) return;
+    reduxDispatch(setIndexing({ isIndexing: true, progress: 0 }));
+    await Indexer.indexWorkspace(workspacePath, (current, total) => {
+      reduxDispatch(setIndexing({ isIndexing: true, progress: Math.round((current / total) * 100) }));
+    });
+    reduxDispatch(setIndexing({ isIndexing: false, progress: 100 }));
+  }, [workspacePath, reduxDispatch]);
+
   const [inlineAI, setInlineAI] = React.useState<{ text: string; filePath: string } | null>(null)
   const [resizing, setResizing] = React.useState<'sidebar' | 'chat' | 'terminal' | null>(null)
   const [newItemState, setNewItemState] = React.useState<{ type: 'file' | 'folder'; parentPath: string } | null>(null)
@@ -358,6 +376,12 @@ export default function Shell() {
           case 'b': e.preventDefault(); dispatch({ type: 'TOGGLE_SIDEBAR' }); break
           case 'j': e.preventDefault(); dispatch({ type: 'TOGGLE_TERMINAL' }); break
           case 'l': e.preventDefault(); e.stopPropagation(); dispatch({ type: 'TOGGLE_CHAT' }); break
+          case 'i': 
+            if (isShift) {
+              e.preventDefault();
+              handleIndexProject();
+            }
+            break
           case 'w': e.preventDefault(); if (activeFile) closeFile(activeFile); break
           case '`': e.preventDefault(); dispatch({ type: 'TOGGLE_TERMINAL' }); break
         }
@@ -388,10 +412,11 @@ export default function Shell() {
 
   useEffect(() => {
     const handler = (e: any) => {
-      const { command } = e.detail || {}
+      const { command, tab } = e.detail || {}
       if (command === 'create-file') handleCreateFile()
       if (command === 'create-folder') handleCreateFolder()
       if (command === 'add-terminal') addTerminal()
+      if (command === 'switch-tab' && tab) dispatch({ type: 'SET_ACTIVE_TAB', tab })
     }
     window.addEventListener('em-command', handler)
     return () => window.removeEventListener('em-command', handler)
@@ -487,14 +512,14 @@ export default function Shell() {
   }
 
   return (
-    <div className="flex flex-col h-screen w-screen bg-[var(--bg-main)] text-[var(--text-main)] font-outfit select-none overflow-hidden">
+    <div className="flex flex-col h-screen w-screen bg-[var(--bg-main)] text-[var(--text-main)] font-outfit overflow-hidden">
       {!state.zenMode && <MenuBar />}
 
       <div className="flex flex-1 overflow-hidden">
         {/* Activity Bar */}
         {!state.zenMode && (
           <div className={cn(
-            "w-[48px] flex flex-col items-center py-3 border-r border-[var(--border-main)] z-30 flex-shrink-0 transition-all duration-700",
+            "w-[48px] flex flex-col items-center py-3 border-r border-[var(--border-main)] z-30 flex-shrink-0 transition-all duration-700 select-none",
             activeFile === 'vibe:studio' ? "vibe-party-dg" : "bg-[var(--bg-side)]"
           )}>
             {NAV_ITEMS.map(item => (
@@ -597,6 +622,8 @@ export default function Shell() {
                 <SearchSidebar workspacePath={workspacePath} onResultClick={openFile} />
               ) : activeTab === 'git' ? (
                 <GitSidebar workspacePath={workspacePath} onShowDiff={handleShowDiff} />
+              ) : activeTab === 'plan' ? (
+                <PlanSidebar />
               ) : activeTab === 'extensions' ? (
                 <ExtensionsSidebar />
               ) : activeTab === 'vibe' ? (
@@ -756,11 +783,46 @@ export default function Shell() {
           </div>
         )}
 
-        {/* Global Resizing Overlay — prevents iframes/webviews from stealing mouse events */}
-        {resizing && (
-          <div className="fixed inset-0 z-50 cursor-ew-resize select-none" style={{ cursor: resizing === 'terminal' ? 'ns-resize' : 'ew-resize' }} />
-        )}
+        <UIPreview />
       </div>
+
+      {!state.zenMode && (
+        <div className="h-[22px] bg-[var(--bg-side)] border-t border-[var(--border-main)] flex items-center justify-between px-3 text-[10px] text-[var(--text-muted)] flex-shrink-0 z-50 select-none">
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-1.5">
+              <Sparkles size={11} className={cn(reduxAppState.isIndexing && "animate-spin text-blue-400")} />
+              {reduxAppState.isIndexing ? (
+                <span className="text-blue-400 font-medium">Indexing Project: {reduxAppState.indexingProgress}%</span>
+              ) : (
+                <span>Exotic Matter Local AI Ready</span>
+              )}
+            </div>
+            {workspacePath && (
+              <div className="flex items-center space-x-1.5 opacity-80 hover:opacity-100 cursor-pointer">
+                <FolderPlus size={11} />
+                <span>{workspacePath.split(/[\\/]/).pop()}</span>
+              </div>
+            )}
+          </div>
+          <div className="flex items-center space-x-4">
+            {activeFile && (
+              <div className="flex items-center space-x-1.5">
+                <FileCode size={11} />
+                <span>{activeFile.split(/[\\/]/).pop()}</span>
+              </div>
+            )}
+            <div className="flex items-center space-x-1 hover:text-[var(--text-main)] cursor-pointer">
+              <Layers size={11} />
+              <span>UTF-8</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Global Resizing Overlay */}
+      {resizing && (
+        <div className="fixed inset-0 z-50 cursor-ew-resize select-none" style={{ cursor: resizing === 'terminal' ? 'ns-resize' : 'ew-resize' }} />
+      )}
 
       {quickOpen && (
         <QuickOpen

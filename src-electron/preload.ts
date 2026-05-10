@@ -79,6 +79,7 @@ contextBridge.exposeInMainWorld('em', {
     ipcRenderer.on('local-ai-token', handler)
     return () => ipcRenderer.removeListener('local-ai-token', handler)
   },
+  localAiEmbedding: (text: string) => ipcRenderer.invoke('local-ai-embedding', text),
 
   // Shell
   openExternal: (url: string) => ipcRenderer.invoke('open-external', url),

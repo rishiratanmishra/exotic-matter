@@ -638,6 +638,14 @@ ipcMain.handle('local-ai-chat', async (event, { messages }: { messages: any[] })
   }
 })
 
+ipcMain.handle('local-ai-embedding', async (_event, text: string) => {
+  try {
+    return await localModelRunner.getEmbedding(text)
+  } catch (err: any) {
+    return { error: err.message }
+  }
+})
+
 ipcMain.handle('local-ai-status', () => {
   return { loaded: localModelRunner.isLoaded() }
 })
@@ -657,14 +665,38 @@ ipcMain.handle('execute-extension-command', async (_event, commandId: string, ar
 })
 
 ipcMain.handle('get-models', async () => {
+  const models: any[] = []
+  
+  // 1. Check local models folder
+  try {
+    const modelsDir = join(app.getAppPath(), '..', 'models') // Adjust based on your structure
+    // Let's try the absolute path the user has if the relative one fails
+    const userModelsDir = 'D:\\exotic-matter\\models'
+    
+    if (fs.existsSync(userModelsDir)) {
+      const files = fs.readdirSync(userModelsDir)
+      files.filter(f => f.endsWith('.gguf')).forEach(f => {
+        models.push({ name: `${f} (Local)`, details: { family: 'gguf' } })
+      })
+    }
+  } catch (err) {
+    console.error('Error reading local models:', err)
+  }
+
+  // 2. Check Ollama
   try {
     const response = await fetch('http://127.0.0.1:11434/api/tags')
-    if (!response.ok) throw new Error(`HTTP ${response.status}`)
-    const data = await response.json() as { models: any[] }
-    return data.models || []
+    if (response.ok) {
+      const data = await response.json() as { models: any[] }
+      if (data.models) {
+        data.models.forEach(m => models.push(m))
+      }
+    }
   } catch {
-    return []
+    // Ollama not running, ignore
   }
+
+  return models
 })
 
 /**

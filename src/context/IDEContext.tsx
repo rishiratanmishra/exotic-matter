@@ -253,8 +253,14 @@ function ideReducer(state: IDEState, action: Action): IDEState {
     case 'SET_LOCAL_MODEL_PATH':
       return { ...state, localModelPath: action.path }
 
-    case 'RESTORE_PERSISTED':
-      return { ...state, ...action.state }
+    case 'RESTORE_PERSISTED': {
+      const restored = { ...action.state }
+      // Migration: Update old Gemma 4 path to Gemma 2 9B
+      if (restored.localModelPath && restored.localModelPath.includes('gemma-4-it.gguf')) {
+        restored.localModelPath = 'd:\\exotic-matter\\models\\gemma-2-9b-it.gguf'
+      }
+      return { ...state, ...restored }
+    }
 
     default:
       return state
@@ -273,7 +279,7 @@ const initialState: IDEState = {
   fileStates: {},
   terminals: [{ id: INITIAL_TERMINAL_ID, label: 'Terminal 1' }],
   activeTerminalId: INITIAL_TERMINAL_ID,
-  localModelPath: 'd:\\exotic-matter\\models\\gemma-4-it.gguf',
+  localModelPath: 'd:\\exotic-matter\\models\\gemma-2-9b-it.gguf',
   terminalOpen: false,
   terminalHeight: 260,
   splitTerminal: false,
@@ -282,7 +288,7 @@ const initialState: IDEState = {
   sidebarWidth: 260,
   activeTab: 'explorer',
   chatOpen: true,
-  chatWidth: 380,
+  chatWidth: 450,
   theme: 'dark',
   quickOpen: false,
   quickOpenQuery: '',
@@ -340,8 +346,36 @@ function persistState(state: IDEState) {
 
 // ─── Provider ─────────────────────────────────────────────────────────────────
 
-export function IDEProvider({ children }: { children: React.ReactNode }) {
-  const [state, dispatch] = useReducer(ideReducer, initialState)
+import { useSelector, useDispatch } from 'react-redux';
+import { RootState } from '../store';
+import { setTheme as setReduxTheme, setWorkspacePath as setReduxWorkspacePath, setLocalModelPath as setReduxModelPath } from '../store/appSlice';
+
+export const IDEProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const reduxState = useSelector((state: RootState) => state.app);
+  const reduxDispatch = useDispatch();
+  
+  const [state, dispatch] = useReducer(ideReducer, {
+    ...initialState,
+    theme: reduxState.theme,
+    workspacePath: reduxState.workspacePath,
+    localModelPath: reduxState.localModelPath,
+  })
+
+  // Sync Redux to Local State
+  useEffect(() => {
+    dispatch({ type: 'RESTORE_PERSISTED', state: {
+      theme: reduxState.theme,
+      workspacePath: reduxState.workspacePath,
+      localModelPath: reduxState.localModelPath,
+    }})
+  }, [reduxState.theme, reduxState.workspacePath, reduxState.localModelPath])
+
+  // Sync Local State to Redux (on change)
+  useEffect(() => {
+    if (state.theme !== reduxState.theme) reduxDispatch(setReduxTheme(state.theme as any));
+    if (state.workspacePath !== reduxState.workspacePath) reduxDispatch(setReduxWorkspacePath(state.workspacePath));
+    if (state.localModelPath !== reduxState.localModelPath) reduxDispatch(setReduxModelPath(state.localModelPath || ''));
+  }, [state.theme, state.workspacePath, state.localModelPath])
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Restore persisted state on mount

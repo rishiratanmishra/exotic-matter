@@ -116,6 +116,61 @@ export const AGENT_TOOLS: Tool[] = [
     name: 'list_extension_commands',
     description: 'Fetch all available extension commands that can be executed.',
     parameters: { type: 'object', properties: {}, required: [] }
+  },
+  {
+    name: 'semantic_search',
+    description: 'Search the codebase using AI embeddings. This is better than keyword search for finding related concepts, similar code patterns, or high-level architecture. Use this when you are not sure of exact function or file names.',
+    parameters: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'The natural language query (e.g. "how do we handle database connections")' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'send_terminal_input',
+    description: 'Send raw keyboard input to the active terminal. Use this to respond to interactive CLI prompts (e.g. [y/n] questions, selecting options) or to stop a process with Ctrl+C (send "\\x03").',
+    parameters: {
+      type: 'object',
+      properties: {
+        input: { type: 'string', description: 'The text or control character to send (e.g. "y\\n" or "\\x03" for Ctrl+C).' },
+      },
+      required: ['input'],
+    },
+  },
+  {
+    name: 'generate_ui',
+    description: 'Generate a UI component (HTML/CSS or SVG) and show it in the Live Preview pane. Use this to mock up designs, create icons, or build interactive components.',
+    parameters: {
+      type: 'object',
+      properties: {
+        title: { type: 'string', description: 'Title of the UI component.' },
+        content: { type: 'string', description: 'The HTML code (using Tailwind CSS) or SVG code.' },
+      },
+      required: ['title', 'content'],
+    },
+  },
+  {
+    name: 'create_plan',
+    description: 'Create a multi-step implementation plan and show it in the Plan sidebar. Use this at the start of complex tasks.',
+    parameters: {
+      type: 'object',
+      properties: {
+        tasks: { 
+          type: 'array', 
+          description: 'List of tasks with title and id.',
+          items: {
+            type: 'object',
+            properties: {
+              id: { type: 'string' },
+              title: { type: 'string' }
+            }
+          }
+        },
+      },
+      required: ['tasks'],
+    },
   }
 ]
 

@@ -45,14 +45,14 @@ export default function Chat() {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
-    // Initialize the internal Gemma 4 model
-    const modelPath = state.localModelPath || 'd:\\exotic-matter\\models\\gemma-4-it.gguf'
-    setAgentStatus('Initializing Gemma 4...')
+    // Initialize the internal Gemma 2 9B model
+    const modelPath = state.localModelPath || 'd:\\exotic-matter\\models\\gemma-2-9b-it.gguf'
+    setAgentStatus('Initializing Gemma 2...')
     LocalAgentService.loadModel(modelPath).then(res => {
       if (res.success) {
-        setModels([{ name: 'Gemma 4 (Local)' }])
-        setSelectedModel('Gemma 4 (Local)')
-        setAgentStatus('Gemma 4 Ready')
+        setModels([{ name: 'Gemma 2 9B (Local)' }])
+        setSelectedModel('Gemma 2 9B (Local)')
+        setAgentStatus('Gemma 2 Ready')
       } else {
         setAgentStatus(`Error: ${res.error}`)
       }
@@ -121,6 +121,14 @@ export default function Chat() {
     })
 
     try {
+      // Auto-load model if not initialized
+      if (!LocalAgentService.getIsLoaded()) {
+        const modelPath = state.localModelPath || 'd:\\exotic-matter\\models\\gemma-2-9b-it.gguf'
+        setAgentStatus('Loading Model...')
+        const res = await LocalAgentService.loadModel(modelPath)
+        if (!res.success) throw new Error(res.error || 'Failed to load model')
+      }
+
       let assistantMsgStarted = false
       await AGENT_EXECUTOR.runTask(text, setAgentStatus, chunk => {
         setMessages(prev => {
@@ -296,14 +304,25 @@ export default function Chat() {
 
               const isUser = msg.role === 'user'
               return (
-                <div key={i} className={cn('flex flex-col animate-in fade-in slide-in-from-bottom-2', isUser ? 'items-end' : 'items-start')}>
+                <div key={i} className={cn('flex flex-col animate-in fade-in slide-in-from-bottom-2 group/msg', isUser ? 'items-end' : 'items-start')}>
                   <div className="flex space-x-3 w-full max-w-full text-left">
                     <div className={cn('flex-1 min-w-0', isUser ? 'flex justify-end' : '')}>
-                      <div className={cn(
-                        'inline-block max-w-[90%] px-4 py-3 border border-[var(--border-main)] text-[13.5px] leading-relaxed break-words',
-                        isUser ? 'bg-[var(--bg-side)] text-[var(--text-main)] rounded-2xl rounded-tr-md shadow-sm' : 'text-[var(--text-main)] rounded-2xl rounded-tl-sm border-transparent'
-                      )}>
-                        {isUser ? <div className="whitespace-pre-wrap">{msg.content}</div> : renderMessageContent(msg.content)}
+                      <div className="relative inline-block max-w-[90%] group">
+                        <div className={cn(
+                          'px-4 py-3 border border-[var(--border-main)] text-[13.5px] leading-relaxed break-words cursor-text select-text',
+                          isUser ? 'bg-[var(--bg-side)] text-[var(--text-main)] rounded-2xl rounded-tr-md shadow-sm' : 'text-[var(--text-main)] rounded-2xl rounded-tl-sm border-transparent'
+                        )}>
+                          {isUser ? <div className="whitespace-pre-wrap">{msg.content}</div> : renderMessageContent(msg.content)}
+                        </div>
+                        {!isUser && (
+                           <button 
+                            onClick={() => { navigator.clipboard.writeText(msg.content) }}
+                            className="absolute -right-8 top-2 p-1.5 rounded-md bg-[var(--bg-side)] border border-[var(--border-main)] text-[var(--text-muted)] opacity-0 group-hover:opacity-100 hover:text-white transition-all shadow-sm"
+                            title="Copy message"
+                           >
+                            <Copy size={12} />
+                           </button>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -357,11 +376,11 @@ export default function Chat() {
               />
 
               <div className="flex items-center justify-between px-3 pb-3 pt-1">
-                <div className="flex items-center space-x-2 ml-1">
+                <div className="flex items-center space-x-1.5 ml-1">
                   {/* Add Context Button */}
-                  <div className="relative">
-                    <button onClick={() => setShowAddContext(!showAddContext)} className="w-[30px] h-[30px] rounded-full bg-[#303030] hover:bg-[#404040] flex items-center justify-center transition-colors text-[#a3a3a3] hover:text-[#d4d4d4]">
-                      <Plus size={16} />
+                  <div className="relative flex-shrink-0">
+                    <button onClick={() => setShowAddContext(!showAddContext)} className="w-8 h-8 rounded-full bg-[#303030] hover:bg-[#404040] flex items-center justify-center transition-colors text-[#a3a3a3] hover:text-[#d4d4d4]">
+                      <Plus size={15} />
                     </button>
                     {showAddContext && (
                       <>
@@ -372,15 +391,15 @@ export default function Chat() {
                           </div>
                           <div className="py-1.5 flex flex-col">
                             <button className="flex items-center space-x-3 px-4 py-2 hover:bg-[#303030] text-[13.5px] text-[#e8e8e8] transition-colors">
-                              <Image size={15} className="text-[#a3a3a3]" />
+                              <Image size={14} className="text-[#a3a3a3]" />
                               <span>Media</span>
                             </button>
                             <button onClick={() => { setInput(prev => prev + '@'); setShowAddContext(false); textareaRef.current?.focus() }} className="flex items-center space-x-3 px-4 py-2 hover:bg-[#303030] text-[13.5px] text-[#e8e8e8] transition-colors">
-                              <AtSign size={15} className="text-[#a3a3a3]" />
+                              <AtSign size={14} className="text-[#a3a3a3]" />
                               <span>Mentions</span>
                             </button>
                             <button className="flex items-center space-x-3 px-4 py-2 hover:bg-[#303030] text-[13.5px] text-[#e8e8e8] transition-colors">
-                              <PenTool size={15} className="text-[#a3a3a3]" />
+                              <PenTool size={14} className="text-[#a3a3a3]" />
                               <span>Workflows</span>
                             </button>
                           </div>
@@ -390,28 +409,28 @@ export default function Chat() {
                   </div>
 
                   {/* Mode Select */}
-                  <button onClick={() => setMode(m => m === 'fast' ? 'planning' : 'fast')} className={cn('flex items-center space-x-1.5 text-[13px] px-2 py-1.5 rounded-lg transition-colors', mode === 'planning' ? 'text-white bg-[#303030]' : 'text-[#a3a3a3] hover:text-[#d4d4d4] hover:bg-[#303030]')}>
+                  <button onClick={() => setMode(m => m === 'fast' ? 'planning' : 'fast')} className={cn('flex items-center space-x-1 flex-shrink-0 text-[12px] px-2 py-1.5 rounded-lg transition-colors', mode === 'planning' ? 'text-white bg-[#303030]' : 'text-[#a3a3a3] hover:text-[#d4d4d4] hover:bg-[#303030]')}>
                     <span className="capitalize">{mode}</span>
-                    <ChevronDown size={14} className="ml-0.5" />
+                    <ChevronDown size={13} className="ml-0.5" />
                   </button>
 
                   {/* Model Select */}
-                  <div className="relative">
-                    <button onClick={() => setShowModels(!showModels)} className="flex items-center space-x-1.5 text-[13px] px-2 py-1.5 rounded-lg text-[#a3a3a3] hover:text-[#d4d4d4] hover:bg-[#303030] transition-colors max-w-[150px]">
+                  <div className="relative flex-shrink-0">
+                    <button onClick={() => setShowModels(!showModels)} className="flex items-center space-x-1 flex-shrink-0 text-[12px] px-2 py-1.5 rounded-lg text-[#a3a3a3] hover:text-[#d4d4d4] hover:bg-[#303030] transition-colors max-w-[120px]">
                       <span className="truncate">{selectedModel || 'Model'}</span>
-                      <ChevronDown size={14} className="flex-shrink-0" />
+                      <ChevronDown size={13} className="flex-shrink-0" />
                     </button>
                     {showModels && (
                       <>
                         <div className="fixed inset-0 z-[190]" onClick={() => setShowModels(false)} />
-                        <div className="absolute bottom-[calc(100%+12px)] left-0 min-w-[220px] bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl shadow-2xl overflow-hidden z-[200] animate-in fade-in slide-in-from-bottom-2">
+                        <div className="absolute bottom-[calc(100%+12px)] left-0 min-w-[200px] bg-[#1a1a1a] border border-[#2b2b2b] rounded-xl shadow-2xl overflow-hidden z-[200] animate-in fade-in slide-in-from-bottom-2">
                           <div className="py-1.5">
                             {models.length > 0 ? models.map(m => (
-                              <button key={m.name} onClick={() => { setSelectedModel(m.name); setShowModels(false) }} className={cn('w-full text-left px-4 py-2.5 text-[13px] hover:bg-[#303030] transition-colors flex items-center space-x-2.5', selectedModel === m.name ? 'text-white' : 'text-[#a3a3a3]')}>
+                              <button key={m.name} onClick={() => { setSelectedModel(m.name); setShowModels(false) }} className={cn('w-full text-left px-4 py-2.5 text-[12px] hover:bg-[#303030] transition-colors flex items-center space-x-2.5', selectedModel === m.name ? 'text-white' : 'text-[#a3a3a3]')}>
                                 <span className="truncate">{m.name}</span>
                               </button>
                             )) : (
-                              <div className="px-4 py-4 text-[12px] text-[#525252] text-center">No models detected</div>
+                              <div className="px-4 py-4 text-[11px] text-[#525252] text-center">No models detected</div>
                             )}
                           </div>
                         </div>
@@ -421,12 +440,12 @@ export default function Chat() {
                 </div>
 
                 {/* Right Controls */}
-                <div className="flex items-center space-x-2 pr-1">
-                  <button className="w-[30px] h-[30px] flex items-center justify-center text-[#a3a3a3] hover:text-white transition-colors">
-                    <Mic size={18} />
+                <div className="flex items-center space-x-2 pr-1 flex-shrink-0">
+                  <button className="w-8 h-8 flex items-center justify-center text-[#a3a3a3] hover:text-white transition-colors">
+                    <Mic size={16} />
                   </button>
-                  <button onClick={() => handleSend()} disabled={isThinking || !input.trim()} className={cn('w-[32px] h-[32px] rounded-full flex items-center justify-center transition-all duration-200', isThinking || !input.trim() ? 'bg-[#303030] text-[#737373] cursor-not-allowed' : 'bg-[#404040] text-white hover:bg-[#505050] active:scale-95')}>
-                    {isThinking ? <Loader2 size={16} className="animate-spin" /> : <ArrowRight size={16} strokeWidth={2.5} />}
+                  <button onClick={() => handleSend()} disabled={isThinking || !input.trim()} className={cn('w-8 h-8 rounded-full flex items-center justify-center transition-all duration-200', isThinking || !input.trim() ? 'bg-[#303030] text-[#737373] cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-500 active:scale-95 shadow-[0_0_10px_rgba(37,99,235,0.3)]')}>
+                    {isThinking ? <Loader2 size={15} className="animate-spin" /> : <ArrowRight size={15} strokeWidth={3} />}
                   </button>
                 </div>
               </div>

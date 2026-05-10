@@ -51,6 +51,11 @@ interface Window {
     // AI
     getModels: () => Promise<Array<{ name: string; [key: string]: any }>>
     aiChat: (payload: { model: string; messages: any[]; stream: boolean }) => Promise<string>
+    localAiLoad: (modelPath: string) => Promise<{ success: boolean; error?: string }>
+    localAiChat: (payload: { messages: any[] }) => Promise<any>
+    localAiStatus: () => Promise<{ loaded: boolean }>
+    onLocalAiToken: (callback: (token: string) => void) => () => void
+    localAiEmbedding: (text: string) => Promise<any>
 
     // Extensions
     listExtensions: () => Promise<any[]>

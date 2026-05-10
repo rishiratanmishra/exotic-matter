@@ -1,7 +1,12 @@
 import React, { useEffect, useRef, useCallback } from 'react'
 import * as monaco from 'monaco-editor'
-import { Sparkles } from 'lucide-react'
+import { Sparkles, X, FileCode } from 'lucide-react'
+import { clsx, type ClassValue } from 'clsx'
+import { twMerge } from 'tailwind-merge'
 import { useIDE } from '../context/IDEContext'
+import { HistoryService } from '../services/HistoryService'
+
+function cn(...inputs: ClassValue[]) { return twMerge(clsx(inputs)) }
 
 // ─── Language detection ───────────────────────────────────────────────────────
 const EXT_LANGUAGE_MAP: Record<string, string> = {
@@ -184,7 +189,9 @@ export default function Editor({ onInlineAIRequest }: EditorProps) {
         const file = prevFileRef.current
         if (!file) return
         if (saveTimerRef.current) clearTimeout(saveTimerRef.current)
-        await window.em.writeFile(file, ed.getValue())
+        const content = ed.getValue()
+        await window.em.writeFile(file, content)
+        await HistoryService.saveSnapshot(file, content)
         dispatch({ type: 'SET_FILE_DIRTY', path: file, isDirty: false })
       },
     })
@@ -323,10 +330,44 @@ export default function Editor({ onInlineAIRequest }: EditorProps) {
     </div>
   )
 
+  const Tabs = () => (
+    <div className="flex h-9 bg-[var(--bg-side)] overflow-x-auto no-scrollbar border-b border-[var(--border-main)] items-center">
+      {state.openFiles.map(file => (
+        <div
+          key={file}
+          onClick={() => dispatch({ type: 'SET_ACTIVE_FILE', path: file })}
+          className={cn(
+            "group flex items-center h-full px-3 min-w-[120px] max-w-[200px] border-r border-[var(--border-main)] cursor-pointer transition-all relative select-none",
+            activeFile === file ? "bg-[var(--bg-main)] text-[var(--text-main)]" : "text-[var(--text-muted)] hover:bg-[var(--bg-main)] hover:opacity-80"
+          )}
+        >
+          {activeFile === file && <div className="absolute top-0 left-0 right-0 h-[1px] bg-blue-500" />}
+          <FileCode size={13} className={cn("mr-2", activeFile === file ? "text-blue-400" : "text-[var(--text-muted)]")} />
+          <span className="text-[11px] truncate flex-1">{file.split(/[\\/]/).pop()}</span>
+          {fileStates[file]?.isDirty && (
+            <div className="w-1.5 h-1.5 rounded-full bg-blue-500 ml-2" />
+          )}
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              dispatch({ type: 'CLOSE_FILE', path: file });
+            }}
+            className="ml-2 p-0.5 rounded opacity-0 group-hover:opacity-100 hover:bg-[var(--border-main)] transition-all"
+          >
+            <X size={12} />
+          </button>
+        </div>
+      ))}
+    </div>
+  )
+
   return (
-    <div className="h-full w-full relative bg-[var(--bg-main)]">
-      <div ref={containerRef} className="h-full w-full" />
-      {!activeFile && <WelcomeScreen />}
+    <div className="h-full w-full relative bg-[var(--bg-main)] flex flex-col">
+      {state.openFiles.length > 0 && <Tabs />}
+      <div className="flex-1 relative">
+        <div ref={containerRef} className="h-full w-full" />
+        {!activeFile && <WelcomeScreen />}
+      </div>
     </div>
   )
 }

@@ -27,14 +27,28 @@ export class LocalAgentService {
       })
       
       try {
-        const response = await window.em.localAiChat({ messages })
-        return response
-      } finally {
-        removeListener()
+      const response = await window.em.localAiChat({ messages })
+      if (response && response.error) {
+        throw new Error(response.error)
       }
-    } else {
-      return await window.em.localAiChat({ messages })
+      return response
+    } finally {
+      if (removeListener) removeListener()
     }
+  } else {
+    const response = await window.em.localAiChat({ messages })
+    if (response && response.error) {
+      throw new Error(response.error)
+    }
+    return response
+  }
+}
+
+  static async generateEmbedding(text: string) {
+    if (!this.isLoaded && this.modelPath) {
+      await this.loadModel(this.modelPath);
+    }
+    return await window.em.localAiEmbedding(text);
   }
 
   static setModelPath(path: string) {
