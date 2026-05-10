@@ -36,7 +36,7 @@ const createIndexedDBStorage = (dbName: string): Storage => {
           const transaction = db.transaction('keyvaluepairs', 'readwrite');
           const store = transaction.objectStore('keyvaluepairs');
           const putRequest = store.put(value, key);
-          putRequest.onsuccess = () => resolve();
+          putRequest.onsuccess = () => resolve(undefined);
           putRequest.onerror = () => reject(putRequest.error);
         };
         request.onerror = () => reject(request.error);
@@ -50,7 +50,7 @@ const createIndexedDBStorage = (dbName: string): Storage => {
           const transaction = db.transaction('keyvaluepairs', 'readwrite');
           const store = transaction.objectStore('keyvaluepairs');
           const deleteRequest = store.delete(key);
-          deleteRequest.onsuccess = () => resolve();
+          deleteRequest.onsuccess = () => resolve(undefined);
           deleteRequest.onerror = () => reject(deleteRequest.error);
         };
         request.onerror = () => reject(request.error);

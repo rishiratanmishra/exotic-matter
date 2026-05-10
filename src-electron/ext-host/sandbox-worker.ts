@@ -4,6 +4,9 @@ import fs from 'fs';
 
 if (!parentPort) throw new Error("Must run as a worker thread");
 
+const apiShim = createApiShim(parentPort);
+const { extId, extPath, manifest } = workerData;
+
 if (process.env.STRICT_PERMS === 'true') {
   // Block dangerous modules
   const blockedModules = ['child_process', 'cluster', 'v8', 'vm'];

@@ -3,8 +3,10 @@
 
 export interface ToolParameter {
   type: string
-  description: string
+  description?: string
   required?: boolean
+  items?: ToolParameter
+  properties?: Record<string, ToolParameter>
 }
 
 export interface Tool {

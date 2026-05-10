@@ -47,7 +47,7 @@ export interface IDEState {
 
   // UI
   sidebarOpen: boolean
-  activeTab: 'explorer' | 'search' | 'git' | 'chat' | 'extensions' | 'vibe'
+  activeTab: 'explorer' | 'search' | 'git' | 'chat' | 'extensions' | 'vibe' | 'plan'
   chatOpen: boolean
   theme: 'dark' | 'light' | 'monokai'
   quickOpen: boolean

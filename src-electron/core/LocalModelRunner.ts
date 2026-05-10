@@ -47,10 +47,8 @@ export class LocalModelRunner {
     if (!this.model) {
       throw new Error('Model not loaded')
     }
-    const { LlamaEmbeddingContext } = await import('node-llama-cpp')
-    const embeddingContext = new LlamaEmbeddingContext({
-      model: this.model
-    })
+    
+    const embeddingContext = await this.model.createEmbeddingContext()
     return await embeddingContext.getEmbeddingFor(text)
   }
 
