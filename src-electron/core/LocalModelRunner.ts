@@ -62,9 +62,8 @@ export class LocalModelRunner {
     const lastMessage = messages[messages.length - 1].content
 
     return await this.session.prompt(lastMessage, {
-      onToken: (tokens: any) => {
-        const text = this.llama.detokenize(tokens)
-        onToken?.(text)
+      onToken: (chunk: string) => {
+        onToken?.(chunk)
       }
     })
   }
